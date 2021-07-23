@@ -4,7 +4,7 @@ use num;
 
 use crate::action::CraftAction;
 
-#[derive(PartialEq, Eq, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
 pub enum StatusCondition {
     NORMAL,
     GOOD,
@@ -17,13 +17,14 @@ pub enum StatusCondition {
     PRIMED,
 }
 
-#[derive(PartialEq, Eq, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CraftResult {
     ONGOING,
     FAILED,
     SUCCESS,
 }
 
+#[derive(Debug)]
 pub struct PlayerParameter {
     pub raw_level: i64,
     pub craftsmanship: i64,
@@ -31,6 +32,7 @@ pub struct PlayerParameter {
     pub max_cp: i64,
 }
 
+#[derive(Debug)]
 pub struct ItemParameter {
     pub internal_level: i64,
     pub max_durability: i64,
@@ -41,12 +43,13 @@ pub struct ItemParameter {
     pub is_expert_recipe: bool,
 }
 
+#[derive(Debug)]
 pub struct CraftParameter {
     pub player: PlayerParameter,
     pub item: ItemParameter,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CraftState {
     pub durability: i64,
     pub progress: i64,

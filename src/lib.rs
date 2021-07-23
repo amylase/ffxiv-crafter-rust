@@ -2,6 +2,7 @@ mod utils;
 mod state;
 mod factor;
 mod action;
+mod search;
 
 use wasm_bindgen::prelude::*;
 
