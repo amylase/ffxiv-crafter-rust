@@ -4,7 +4,7 @@ use num;
 
 use crate::action::CraftAction;
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, PartialOrd, Ord)]
 pub enum StatusCondition {
     NORMAL,
     GOOD,
