@@ -1,0 +1,24 @@
+{
+  "name": "ffxiv-crafter-frontend",
+  "version": "0.1.0",
+  "description": "web frontend for ffxiv crafter solver",
+  "main": "index.js",
+  "bin": {
+    "create-wasm-app": ".bin/create-wasm-app.js"
+  },
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server"
+  },
+  "author": "Shunsuke Ohashi <amylase.inquiry@gmail.com>",
+  "devDependencies": {
+    "hello-wasm-pack": "^0.1.0",
+    "webpack": "^4.29.3",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.5",
+    "copy-webpack-plugin": "^5.0.0"
+  },
+  "dependencies": {
+    "ffxiv-crafter-rust": "file:../pkg"
+  }
+}
