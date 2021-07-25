@@ -105,6 +105,7 @@ fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &Cr
     }
 }
 
+#[allow(dead_code)]
 pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult {
     if state.result != CraftResult::ONGOING {
         return DFSResult {

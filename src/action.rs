@@ -90,7 +90,7 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
 
     let mut result = vec![];
     let mut condition_probas: Vec<(StatusCondition, f64)> = transition_probabilities(params, &state).into_iter().collect();
-    condition_probas.sort_by_key(|&(sc, p)| sc);
+    condition_probas.sort_by_key(|&(sc, _p)| sc);
     for &(status_condition, probability) in condition_probas.iter() {
         let mut next_state = state.clone();
         next_state.condition = status_condition;
