@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use crate::state::{CraftParameter, CraftResult, CraftState, StatusCondition};
 use crate::factor::{transition_probabilities, control_factor, craftsmanship_factor};
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize)]
 pub enum CraftAction {
     BasicSynthesis,
     BasicTouch,
