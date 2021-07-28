@@ -1,4 +1,5 @@
 import * as wasm from "ffxiv-crafter-rust";
+import { CraftParameter, CraftState, ItemParameter, PlayerParameter } from "./models/gamestate";
 
 let item_params = {
     internal_level: 490,
@@ -8,17 +9,17 @@ let item_params = {
     standard_craftsmanship: 2180,
     standard_control: 2010,
     is_expert_recipe: true,
-};
+} as ItemParameter;
 let player_params = {
     raw_level: 80,
     craftsmanship: 2978,
     control: 2787,
     max_cp: 655,
-};
+} as PlayerParameter;
 let crafter_params = {
     player: player_params,
     item: item_params,
-}
+} as CraftParameter;
 let state = {
     durability: item_params.max_durability,
     progress: 0,
@@ -38,7 +39,7 @@ let state = {
 
     prev_action: "MuscleMemory",
     result: "ONGOING",
-};
+} as CraftState;
 alert(state)
 let best_move = wasm.search_best_move(JSON.stringify(crafter_params), JSON.stringify(state), BigInt(3));
 alert(best_move);
