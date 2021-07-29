@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
+import { useLanguage } from '../hooks/useLanguage';
 import { CraftAction, craftActions, CraftParameter, craftResults, CraftState, initial_state } from '../models/gamestate';
 import { available_actions, search_best_move, play_action } from '../rustfuncs';
+import { translationProvider } from '../translation';
 import { GameStateView } from './GameStateView';
 
 interface Props {
@@ -12,6 +14,8 @@ export function CrafterGame(props: Props) {
     const { params } = props;
     const [craftState, setCraftState] = useState(initial_state(params));
     const [aiAdviceEnabled, setAiAdviceEnabled] = useState(false);
+    const [ language, setLanguage ] = useLanguage();
+    const t = translationProvider(language);
 
     const possible_actions = available_actions(craftState);
     function onActionButtonClickFactory(action: CraftAction) {
@@ -53,7 +57,7 @@ export function CrafterGame(props: Props) {
             variant = "secondary"
         }
         return <Button key={action} variant={variant} disabled={disabled} onClick={onActionButtonClickFactory(action)}>
-            {action}
+            {t(action)}
         </Button>
     })
 
@@ -68,12 +72,12 @@ export function CrafterGame(props: Props) {
         </Form.Group>
 
         <Form.Group className={"mb-3"}>
-            <Form.Check type="checkbox" label="Enable AI Advice" onChange={onAiAdviceCheckChange}/>
+            <Form.Check type="checkbox" label={t("EnableAIAdvice")} onChange={onAiAdviceCheckChange}/>
         </Form.Group>
         
         {aiAdviceEnabled ? 
         <Form.Group className={"mb-3"}>
-            AI Advice: {aiAdvice}
+            AI: {t(aiAdvice)}
         </Form.Group>
         : null }
 

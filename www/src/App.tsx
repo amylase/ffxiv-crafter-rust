@@ -1,5 +1,6 @@
 import React from "react";
 import { CrafterGame } from "./components/CrafterGame";
+import { LanguageSelector } from "./components/LanguageSelector";
 import {call_wasm} from "./rustfuncs";
 
 
@@ -26,6 +27,7 @@ export function App(props: {}) {
 
     return (
         <div className={"m-5"}>
+            <LanguageSelector/>
             <CrafterGame params={params}/>
         </div>
     );
