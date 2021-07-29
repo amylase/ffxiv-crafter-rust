@@ -1,10 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::cmp::max;
 
 use num;
 use crate::action::CraftAction;
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, PartialOrd, Ord, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum StatusCondition {
     NORMAL,
     GOOD,
@@ -17,7 +17,7 @@ pub enum StatusCondition {
     PRIMED,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum CraftResult {
     ONGOING,
     FAILED,
@@ -49,7 +49,7 @@ pub struct CraftParameter {
     pub item: ItemParameter,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CraftState {
     pub durability: i64,
     pub progress: i64,

@@ -1,5 +1,5 @@
 
-const statusConditions = [
+export const statusConditions = [
     "NORMAL",
     "GOOD",
     "EXCELLENT",
@@ -12,14 +12,14 @@ const statusConditions = [
 ];
 type StatusCondition = typeof statusConditions[number];
 
-const craftResults = [
+export const craftResults = [
     "ONGOING",
     "FAILED",
     "SUCCESS",
 ]
 type CraftResult = typeof craftResults[number];
 
-const craftActions = [
+export const craftActions = [
     "BasicSynthesis",
     "BasicTouch",
     "MastersMend",
@@ -50,7 +50,7 @@ const craftActions = [
     "FinalAppraisal",
     "Manipulation",
 ]
-type CraftAction = typeof craftActions[number];
+export type CraftAction = typeof craftActions[number];
 
 export interface ItemParameter {
     internal_level: number,
@@ -91,6 +91,33 @@ export interface CraftState {
     manipulation: number,
     turn: number,
 
-    prev_action: CraftAction | undefined,
+    prev_action?: CraftAction,
     result: CraftResult,
+}
+
+export interface ProbabilisticState {
+    state: CraftState,
+    probability: number,
+}
+
+export function initial_state(params: CraftParameter): CraftState {
+    return {
+        durability: params.item.max_durability,
+        progress: 0,
+        quality: 0,
+        cp: params.player.max_cp,
+        condition: "NORMAL",
+
+        inner_quiet: 0,
+        innovation: 0,
+        veneration: 0,
+        muscle_memory: 0,
+        waste_not: 0,
+        great_strides: 0,
+        final_appraisal: 0,
+        manipulation: 0,
+        turn: 1,
+
+        result: "ONGOING",
+    };
 }

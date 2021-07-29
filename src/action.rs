@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use crate::state::{CraftParameter, CraftResult, CraftState, StatusCondition};
 use crate::factor::{transition_probabilities, control_factor, craftsmanship_factor};
+use strum_macros::EnumString;
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize, EnumString)]
 pub enum CraftAction {
     BasicSynthesis,
     BasicTouch,
@@ -35,7 +36,7 @@ pub enum CraftAction {
     Manipulation,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct ProbabilisticState {
     pub state: CraftState,
     pub probability: f64,
