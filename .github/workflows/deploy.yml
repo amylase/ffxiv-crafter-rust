@@ -1,0 +1,49 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v2.1.2
+
+      - uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: www/node_modules
+          key: ${{ hashFiles('www/package.json') }}
+
+      - uses: actions/cache@v2
+        env:
+          cache-name: cache-cargo-modules
+        with:
+          path: |
+            ~/.cargo
+            /usr/share/rust/.cargo
+          key: ${{ hashFiles('Cargo.toml') }}
+
+      - name: install wasmpack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: build rust package
+        run: wasm-pack build
+
+      - name: Build webpack package
+        working-directory: www
+        run: |
+          npm install
+          npm build
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: www/dist
