@@ -7,7 +7,7 @@
     "create-wasm-app": ".bin/create-wasm-app.js"
   },
   "scripts": {
-    "build": "webpack --config webpack.config.js",
+    "build": "webpack --config webpack.config.js --mode production",
     "start": "webpack-dev-server"
   },
   "author": "Shunsuke Ohashi <amylase.inquiry@gmail.com>",

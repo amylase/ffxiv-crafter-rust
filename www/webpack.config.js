@@ -17,7 +17,6 @@ module.exports = {
       { test: /\.js$/, loader: "source-map-loader" },
     ],
   },
-  mode: "development",
   plugins: [
     new CopyWebpackPlugin(['index.html'])
   ],
