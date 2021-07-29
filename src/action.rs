@@ -300,10 +300,10 @@ fn apply_muscle_memory(params: &CraftParameter, state: &CraftState) -> Probabili
     deterministic(next_state)
 }
 
-fn apply_focused_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+fn apply_focused_synthesis(params: &CraftParameter, state: &CraftState, prev_action: &Option<CraftAction>) -> ProbabilisticResult {
     let mut success_state = state.clone();
     produce_progress(params, &mut success_state, 200.);
-    if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::Observe {
+    if prev_action == &Some(CraftAction::Observe) {
         deterministic(success_state)
     } else {
         let failed_state = state.clone();
@@ -317,10 +317,10 @@ fn apply_standard_touch(params: &CraftParameter, state: &CraftState) -> Probabil
     deterministic(next_state)
 }
 
-fn apply_focused_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+fn apply_focused_touch(params: &CraftParameter, state: &CraftState, prev_action: &Option<CraftAction>) -> ProbabilisticResult {
     let mut success_state = state.clone();
     produce_quality(params, &mut success_state, 150., 1);
-    if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::Observe {
+    if prev_action == &Some(CraftAction::Observe) {
         deterministic(success_state)
     } else {
         let failed_state = state.clone();
@@ -480,6 +480,7 @@ impl CraftAction {
     }
 
     pub fn apply(&self, params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+        let prev_action = state.prev_action;
         let mut state = state.clone();
         state.cp -= self.cp_cost(&state);
         state.durability -= self.durability_cost(&state);
@@ -505,9 +506,9 @@ impl CraftAction {
             Self::Innovation => apply_innovation(&state),
             Self::Veneration => apply_veneration(&state),
             Self::MuscleMemory => apply_muscle_memory(params, &state),
-            Self::FocusedSynthesis => apply_focused_synthesis(params, &state),
+            Self::FocusedSynthesis => apply_focused_synthesis(params, &state, &prev_action),
             Self::StandardTouch => apply_standard_touch(params, &state),
-            Self::FocusedTouch => apply_focused_touch(params, &state),
+            Self::FocusedTouch => apply_focused_touch(params, &state, &prev_action),
             Self::Reflect => apply_reflect(params, &state),
             Self::WasteNot => apply_waste_not(&state),
             Self::WasteNotII => apply_waste_not_ii(&state),
