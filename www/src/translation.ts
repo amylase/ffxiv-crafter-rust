@@ -227,6 +227,9 @@ const dictionary: {[key: string]: DictionaryEntry} = {
 
 export function translationProvider(language: string): (string) => string {
     return function(key: string) {
+        if (key === undefined) {
+            return undefined;
+        }
         if (!(key in dictionary)) {
             return `err: key ${key} does not exist.`
         } else if (!(language in dictionary[key])) {

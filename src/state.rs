@@ -91,6 +91,7 @@ impl CraftState {
 }
 
 impl CraftParameter {
+    #[allow(dead_code)]
     pub fn initial_state(&self) -> CraftState {
         CraftState {
             durability: self.item.max_durability,
