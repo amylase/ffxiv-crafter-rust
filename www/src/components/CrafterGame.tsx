@@ -1,34 +1,66 @@
 import React, { useState } from 'react';
 import { Button, ButtonGroup, Form } from 'react-bootstrap';
 import { useLanguage } from '../hooks/useLanguage';
-import { CraftAction, craftActions, CraftParameter, craftResults, CraftState, initial_state } from '../models/gamestate';
+import { CraftAction, craftActions, CraftConfiguration, CraftParameter, craftResults, CraftState, initial_state } from '../models/gamestate';
 import { available_actions, search_best_move, play_action } from '../rustfuncs';
 import { translationProvider } from '../translation';
 import { GameStateView } from './GameStateView';
 import { NextStateSelector } from './NextStateSelector';
+import { ParameterEditor } from './ParameterEditor';
 
 
 enum GameState {
+    CONFIGURING,
     PLAYABLE,
     SELECTING_NEXT_STATE,
 }
 
-interface Props {
-    params: CraftParameter
+function getInitialConfig(): CraftConfiguration {
+    const itemParams = {
+        internal_level: 490,
+        max_durability: 55,
+        max_progress: 12046,
+        max_quality: 81447,
+        standard_craftsmanship: 2180,
+        standard_control: 2010,
+        is_expert_recipe: true,
+    };
+    const playerParams = {
+        raw_level: 80,
+        craftsmanship: 2978,
+        control: 2787,
+        max_cp: 655,
+    };
+    const craftParameter = {
+        player: playerParams,
+        item: itemParams,
+    };
+    return {
+        params: craftParameter,
+        initialQuality: 0
+    }
 }
 
-export function CrafterGame(props: Props) {
-    const { params } = props;
-    const [ craftState, setCraftState ] = useState(initial_state(params));
-    const [ gameState, setGameState ] = useState(GameState.PLAYABLE);
-    const [ nextStates, setNextStates] = useState(undefined);
+export function CrafterGame() {
+    const [ craftConfig, setCraftConfig ] = useState<CraftConfiguration>(getInitialConfig());
+    const [ craftState, setCraftState ] = useState<CraftState>(initial_state(craftConfig));
+    const [ gameState, setGameState ] = useState<GameState>(GameState.CONFIGURING);
+    const [ nextStates, setNextStates] = useState<CraftState[]>(undefined);
     const [ language, setLanguage ] = useLanguage();
     const t = translationProvider(language);
 
     const possible_actions = available_actions(craftState);
+    function onConfigChange(config: CraftConfiguration) {
+        setCraftConfig(config);
+        setGameState(GameState.CONFIGURING);
+    }
+    function onStartButtonClick() {
+        setCraftState(initial_state(craftConfig));
+        setGameState(GameState.PLAYABLE);
+    }
     function onActionButtonClickFactory(action: CraftAction) {
         return function() {
-            const nextStates = play_action(params, craftState, action);
+            const nextStates = play_action(craftConfig.params, craftState, action);
             setNextStates(nextStates.map((probaState) => probaState.state));
             setGameState(GameState.SELECTING_NEXT_STATE);
         }
@@ -39,14 +71,14 @@ export function CrafterGame(props: Props) {
         setNextStates(undefined);
     }
     function onResetButtonClick() {
-        setCraftState(initial_state(params));
+        setCraftState(initial_state(craftConfig));
         setGameState(GameState.PLAYABLE);
         setNextStates(undefined);
     }
 
     let aiAdvice;
     if (gameState === GameState.PLAYABLE && craftState.result === "ONGOING") {
-        aiAdvice = search_best_move(params, craftState, 3);
+        aiAdvice = search_best_move(craftConfig.params, craftState, 3);
     };
 
     const action_buttons = craftActions.map((action) => {
@@ -67,10 +99,13 @@ export function CrafterGame(props: Props) {
         </Button>
     })
 
-    return <Form>
-        <GameStateView params={params} state={craftState}/>
+    return <div>
+        <ParameterEditor config={craftConfig} onChange={onConfigChange}/>
+        <Button variant="primary" onClick={onStartButtonClick}>Start</Button>
+        <GameStateView params={craftConfig.params} state={craftState}/>
+
         {gameState === GameState.PLAYABLE ? 
-            <>
+            <Form>
                 <Form.Group className={"mb-3"}>
                     <ButtonGroup>
                         {action_buttons}
@@ -79,11 +114,11 @@ export function CrafterGame(props: Props) {
                 <Form.Group className={"mb-3"}>
                     AI: {t(aiAdvice)}
                 </Form.Group>
-            </>
+            </Form>
         : gameState === GameState.SELECTING_NEXT_STATE ? 
             <NextStateSelector options={nextStates} onChange={onNextStateSelected}/>
         : null}
 
         <Button variant="danger" onClick={onResetButtonClick}>Reset</Button>
-    </Form>
+    </div>
 }

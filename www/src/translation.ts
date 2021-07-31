@@ -230,6 +230,46 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     Failure: {
         en: "Failure",
         ja: "失敗"
+    },
+    ClassLevel: {
+        en: "Class Level",
+        ja: "クラフターレベル"
+    },
+    Craftsmanship: {
+        en: "Craftsmanship",
+        ja: "作業精度"
+    },
+    Control: {
+        en: "Control",
+        ja: "加工精度"
+    },
+    MaxCP: {
+        en: "Max CP",
+        ja: "最大CP"
+    },
+    RecipeLevel: {
+        en: "Recipe Level",
+        ja: "レシピレベル"
+    },
+    MaxDurability: {
+        en: "Durability",
+        ja: "耐久"
+    },
+    MaxProgress: {
+        en: "Max Progress",
+        ja: "必要工数"
+    },
+    MaxQuality: {
+        en: "Max Quality",
+        ja: "最大品質"
+    },
+    InitialQuality: {
+        en: "Initial Quality",
+        ja: "初期品質"
+    },
+    IsExpert: {
+        en: "Expert Recipe",
+        ja: "高難易度レシピ"
     }
 };
 
