@@ -128,7 +128,7 @@ export function initial_state(config: CraftConfiguration): CraftState {
     };
 }
 
-const suggestedCraftsmanships = {
+export const suggestedCraftsmanships = {
     1: 22,
     2: 22,
     3: 22,
@@ -583,7 +583,7 @@ const suggestedCraftsmanships = {
     490: 2180
 }
 
-const suggestedControls = {
+export const suggestedControls = {
     1: 11,
     2: 11,
     3: 11,
