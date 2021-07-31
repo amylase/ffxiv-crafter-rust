@@ -222,6 +222,14 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     EnableAIAdvice: {
         en: "Enable AI Advice",
         ja: "AIの候補を表示"
+    },
+    Success: {
+        en: "Success",
+        ja: "成功"
+    },
+    Failure: {
+        en: "Failure",
+        ja: "失敗"
     }
 };
 

@@ -10,14 +10,14 @@ export const statusConditions = [
     "MALLEABLE",
     "PRIMED",
 ];
-type StatusCondition = typeof statusConditions[number];
+export type StatusCondition = typeof statusConditions[number];
 
 export const craftResults = [
     "ONGOING",
     "FAILED",
     "SUCCESS",
 ]
-type CraftResult = typeof craftResults[number];
+export type CraftResult = typeof craftResults[number];
 
 export const craftActions = [
     "BasicSynthesis",

@@ -1,5 +1,5 @@
 import React from "react";
-import { Button } from "react-bootstrap";
+import { Button, ButtonGroup } from "react-bootstrap";
 import { useLanguage } from "../hooks/useLanguage";
 import { supportedLanguages } from "../translation";
 
@@ -11,7 +11,7 @@ const languageNameMapper = {
 export function LanguageSelector() {
     const [language, setLanguage] = useLanguage();
 
-    return <div>
+    return <ButtonGroup>
         {supportedLanguages.map((lang) => {
             return <Button
                 key={lang}
@@ -21,5 +21,5 @@ export function LanguageSelector() {
                 {languageNameMapper[lang]}
             </Button>
         })}
-    </div>
+    </ButtonGroup>
 }
