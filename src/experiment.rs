@@ -15,12 +15,12 @@ fn main() {
         max_cp: 655
     };
     let item = state::ItemParameter {
-        internal_level: 490,
+        internal_level: 516,
         max_durability: 55,
         max_progress: 12046,
         max_quality: 81447,
-        standard_craftsmanship: factor::SUGGESTED_CRAFTSMANSHIP_MAP[&490],
-        standard_control: factor::SUGGESTED_CONTROL_MAP[&490],
+        standard_craftsmanship: factor::SUGGESTED_CRAFTSMANSHIP_MAP[&516],
+        standard_control: factor::SUGGESTED_CONTROL_MAP[&516],
         is_expert_recipe: true
     };
     let params = state::CraftParameter {

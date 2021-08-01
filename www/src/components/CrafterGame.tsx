@@ -17,7 +17,7 @@ enum GameState {
 
 function getInitialConfig(): CraftConfiguration {
     const itemParams = {
-        internal_level: 490,
+        internal_level: 516,
         max_durability: 55,
         max_progress: 12046,
         max_quality: 81447,
