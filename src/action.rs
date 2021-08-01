@@ -105,17 +105,18 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
 }
 
 fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64) {
-    let mut efficiency: f64 = base_efficiency;
+    let mut efficiency_coef = 1.;
     if state.veneration > 0 {
-        efficiency *= 1.5;
+        efficiency_coef += 0.5
     }
     if state.muscle_memory > 0 {
-        efficiency *= 2.
+        efficiency_coef += 1.;
     }
+    let efficiency: f64 = base_efficiency * efficiency_coef;
     let craftsmanship = params.player.craftsmanship as f64;
     let item = &params.item;
     let raw_level = params.player.raw_level;
-    let mut progress: f64 = (efficiency / 100. * (0.21 * craftsmanship + 2.) * (10000. + craftsmanship) / (10000. + item.standard_craftsmanship as f64) * craftsmanship_factor(raw_level, item.internal_level)).floor();
+    let mut progress: f64 = (efficiency / 100. * ((0.21 * craftsmanship + 2.) * (10000. + craftsmanship) / (10000. + item.standard_craftsmanship as f64) * craftsmanship_factor(raw_level, item.internal_level)).floor()).floor();
     if state.condition == StatusCondition::MALLEABLE {
         progress *= 1.5
     }
@@ -138,7 +139,7 @@ fn produce_quality(params: &CraftParameter, state: &mut CraftState, base_efficie
     let raw_level = params.player.raw_level;
     let item = &params.item;
 
-    let mut quality = (efficiency / 100. * (0.35 * control as f64 + 35.) * (10000. + control) / (10000. + item.standard_control as f64) * control_factor(raw_level, item.internal_level)).floor();
+    let mut quality = (efficiency / 100. * ((0.35 * control as f64 + 35.) * (10000. + control) / (10000. + item.standard_control as f64) * control_factor(raw_level, item.internal_level)).floor()).floor();
     if state.condition == StatusCondition::POOR {
         quality *= 0.5;
     }

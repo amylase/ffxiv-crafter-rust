@@ -23,8 +23,7 @@ export function NextStateSelector(props: Props) {
     const t = translationProvider(language);
 
     const hashes = Array.from(new Set(options.map(stateHash)));
-    hashes.sort();
-    hashes.reverse();
+    hashes.sort((a, b) => b - a);
     const possibleConditions = statusConditions.filter((condition) => options.some((nextState) => nextState.condition === condition));
 
     const buttons = new Map();

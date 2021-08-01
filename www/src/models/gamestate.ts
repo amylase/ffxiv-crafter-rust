@@ -579,8 +579,9 @@ export const suggestedCraftsmanships = {
     448: 2112,
     449: 2126,
     450: 2140,
-    480: 2160,
-    490: 2180
+    460: 2250,
+    480: 2480,
+    516: 2620,
 }
 
 export const suggestedControls = {
@@ -1034,6 +1035,7 @@ export const suggestedControls = {
     448: 1964,
     449: 1977,
     450: 1990,
-    480: 2000,
-    490: 2010
+    460: 2055,
+    480: 2195,
+    516: 2540,
 }
