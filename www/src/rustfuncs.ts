@@ -15,7 +15,7 @@ export function play_action(params: CraftParameter, state: CraftState, action: C
     return JSON.parse(serialized_states);
 }
 
-export function available_actions(state: CraftState): CraftAction[] {
-    const available_actions_str = wasm.available_actions(JSON.stringify(state));
+export function available_actions(params: CraftParameter, state: CraftState): CraftAction[] {
+    const available_actions_str = wasm.available_actions(JSON.stringify(params), JSON.stringify(state));
     return JSON.parse(available_actions_str);
 }

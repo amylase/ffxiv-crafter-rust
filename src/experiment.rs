@@ -9,18 +9,16 @@ mod action;
 
 fn main() {
     let player = state::PlayerParameter {
-        raw_level: 80,
+        job_level: 80,
         craftsmanship: 2978,
         control: 2787,
         max_cp: 655
     };
     let item = state::ItemParameter {
-        internal_level: 516,
+        recipe_level: 516,
         max_durability: 55,
         max_progress: 12046,
         max_quality: 81447,
-        standard_craftsmanship: factor::SUGGESTED_CRAFTSMANSHIP_MAP[&516],
-        standard_control: factor::SUGGESTED_CONTROL_MAP[&516],
         is_expert_recipe: true
     };
     let params = state::CraftParameter {

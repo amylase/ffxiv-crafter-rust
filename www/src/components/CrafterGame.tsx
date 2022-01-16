@@ -21,8 +21,6 @@ function getInitialConfig(): CraftConfiguration {
         max_durability: 55,
         max_progress: 12046,
         max_quality: 81447,
-        standard_craftsmanship: 2180,
-        standard_control: 2010,
         is_expert_recipe: true,
     };
     const playerParams = {
@@ -49,7 +47,7 @@ export function CrafterGame() {
     const [ language, setLanguage ] = useLanguage();
     const t = translationProvider(language);
 
-    const possible_actions = available_actions(craftState);
+    const possible_actions = available_actions(craftConfig.params, craftState);
     function onConfigChange(config: CraftConfiguration) {
         setCraftConfig(config);
         setGameState(GameState.CONFIGURING);

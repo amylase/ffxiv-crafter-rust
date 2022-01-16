@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Col, Form, Row } from "react-bootstrap";
 import { useLanguage } from "../hooks/useLanguage";
-import { CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter, suggestedControls, suggestedCraftsmanships } from "../models/gamestate";
+import { CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter } from "../models/gamestate";
 import { translationProvider } from "../translation";
 
 const levelTable = {
@@ -131,13 +131,9 @@ export function ParameterEditor(props: Props) {
         onConfigChange({...config, params: newParams});
     }
     function onRecipeLevelChange(newRecipeLevel: number) {
-        const newStandardCraftsmanship = suggestedCraftsmanships[newRecipeLevel];
-        const newStandardControl = suggestedControls[newRecipeLevel];
         onItemParameterChange({
             ...config.params.item,
             internal_level: newRecipeLevel,
-            standard_craftsmanship: newStandardCraftsmanship,
-            standard_control: newStandardControl
         })
     }
     const recipeLevels = Object.keys(levelTable);

@@ -57,9 +57,10 @@ pub fn play_action(params_str: &str, state_str: &str, action_str: &str) -> Strin
 }
 
 #[wasm_bindgen]
-pub fn available_actions(state_str: &str) -> String {
+pub fn available_actions(params_str: &str, state_str: &str) -> String {
+    let params: CraftParameter = serde_json::from_str(params_str).unwrap();
     let state: CraftState = serde_json::from_str(state_str).unwrap();
 
-    let available_actions: Vec<CraftAction> = CraftAction::all_actions().into_iter().filter(|action| action.is_playable(&state)).collect();
+    let available_actions: Vec<CraftAction> = CraftAction::all_actions().into_iter().filter(|action| action.is_playable(&params, &state)).collect();
     serde_json::to_string(&available_actions).unwrap().to_string()
 }
