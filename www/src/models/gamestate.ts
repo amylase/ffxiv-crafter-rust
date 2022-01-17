@@ -54,7 +54,7 @@ export const craftActions = [
 export type CraftAction = typeof craftActions[number];
 
 export interface ItemParameter {
-    internal_level: number,
+    recipe_level: number,
     max_durability: number,
     max_progress: number,
     max_quality: number,
@@ -62,7 +62,7 @@ export interface ItemParameter {
 }
 
 export interface PlayerParameter {
-    raw_level: number,
+    job_level: number,
     craftsmanship: number,
     control: number,
     max_cp: number,

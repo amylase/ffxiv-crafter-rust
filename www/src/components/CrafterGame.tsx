@@ -17,14 +17,14 @@ enum GameState {
 
 function getInitialConfig(): CraftConfiguration {
     const itemParams = {
-        internal_level: 516,
+        recipe_level: 516,
         max_durability: 55,
-        max_progress: 12046,
-        max_quality: 81447,
+        max_progress: 5059,
+        max_quality: 15474,
         is_expert_recipe: true,
     };
     const playerParams = {
-        raw_level: 80,
+        job_level: 80,
         craftsmanship: 2978,
         control: 2787,
         max_cp: 655,

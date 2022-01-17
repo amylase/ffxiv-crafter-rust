@@ -17,8 +17,8 @@ fn main() {
     let item = state::ItemParameter {
         recipe_level: 516,
         max_durability: 55,
-        max_progress: 12046,
-        max_quality: 81447,
+        max_progress: 5059,
+        max_quality: 15474,
         is_expert_recipe: true
     };
     let params = state::CraftParameter {

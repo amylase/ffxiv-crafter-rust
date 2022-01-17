@@ -145,6 +145,18 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         en: "Manipulation",
         ja: "マニピュレーション"
     },
+    AdvancedTouch: {
+        en: "Advanced Touch",
+        ja: "上級加工"
+    },
+    PrudentSynthesis: {
+        en: "Prudent Synthesis",
+        ja: "倹約作業"
+    },
+    TrainedFinesse: {
+        en: "Trained Finesse",
+        ja: "匠の神業"
+    },
 
     // conditions
     NORMAL: {

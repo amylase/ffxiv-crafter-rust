@@ -133,7 +133,7 @@ export function ParameterEditor(props: Props) {
     function onRecipeLevelChange(newRecipeLevel: number) {
         onItemParameterChange({
             ...config.params.item,
-            internal_level: newRecipeLevel,
+            recipe_level: newRecipeLevel,
         })
     }
     const recipeLevels = Object.keys(levelTable);
@@ -143,7 +143,7 @@ export function ParameterEditor(props: Props) {
         <Row>
             <Form.Group as={Col}>
                 <Form.Label>{t("ClassLevel")}</Form.Label>
-                <Form.Control value={config.params.player.raw_level} onChange={(e) => onPlayerParameterChange({...config.params.player, raw_level: parseInt(e.target.value)})}/>
+                <Form.Control value={config.params.player.job_level} onChange={(e) => onPlayerParameterChange({...config.params.player, job_level: parseInt(e.target.value)})}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("Craftsmanship")}</Form.Label>
@@ -163,7 +163,7 @@ export function ParameterEditor(props: Props) {
                 <Form.Label>{t("RecipeLevel")}</Form.Label>
                 <Form.Control as={"select"} onChange={(e) => onRecipeLevelChange(parseInt(e.target.value))}>
                     {recipeLevels.map((recipeLevel) => {
-                        return <option key={recipeLevel} value={levelTable[recipeLevel]} selected={levelTable[recipeLevel] === config.params.item.internal_level}>{recipeLevel}</option>
+                        return <option key={recipeLevel} value={levelTable[recipeLevel]} selected={levelTable[recipeLevel] === config.params.item.recipe_level}>{recipeLevel}</option>
                     })}
                 </Form.Control>
             </Form.Group>

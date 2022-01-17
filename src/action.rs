@@ -131,7 +131,7 @@ fn produce_quality(params: &CraftParameter, state: &mut CraftState, base_efficie
     let crafting_level = crafting_level(params.player.job_level);
     let recipe_level = params.item.recipe_level;
     let q1 = params.player.control as f64 * 10. / quality_div(recipe_level) as f64 + 35.;
-    let penalty = if crafting_level < recipe_level { quality_mod(recipe_level) as f64 } else { 1. };
+    let penalty = if crafting_level < recipe_level { quality_mod(recipe_level) as f64 / 100. } else { 1. };
     let q2 = q1 * penalty;
     let condition = if state.condition == StatusCondition::POOR {
         0.5
