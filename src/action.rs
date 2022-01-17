@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::state::{CraftParameter, CraftResult, CraftState, StatusCondition};
-use crate::factor::{transition_probabilities, control_factor, craftsmanship_factor};
+use crate::factor::{transition_probabilities, progress_div, crafting_level, progress_mod, quality_div, quality_mod};
 use strum_macros::EnumString;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize, EnumString)]
@@ -8,7 +8,6 @@ pub enum CraftAction {
     BasicSynthesis,
     BasicTouch,
     MastersMend,
-    InnerQuiet,
     DelicateSynthesis,
     CarefulSynthesis,
     Groundwork,
@@ -19,7 +18,6 @@ pub enum CraftAction {
     IntensiveSynthesis,
     HastyTouch,
     PreciseTouch,
-    PatientTouch,
     TrickOfTheTrade,
     Innovation,
     Veneration,
@@ -34,6 +32,9 @@ pub enum CraftAction {
     GreatStrides,
     FinalAppraisal,
     Manipulation,
+    AdvancedTouch,
+    PrudentSynthesis,
+    TrainedFinesse,
 }
 
 #[derive(Clone, Serialize)]
@@ -104,56 +105,56 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     result
 }
 
+// https://docs.google.com/document/d/1Fl5X16oPF-4X29v5PukCkVgcPhZsbzhKcoq6Us7fhKU/edit#
 fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64) {
-    let mut efficiency_coef = 1.;
+    let crafting_level = crafting_level(params.player.job_level);
+    let recipe_level = params.item.recipe_level;
+    let p1 = params.player.craftsmanship as f64 * 10. / progress_div(recipe_level) as f64 + 2.;
+    let penalty = if crafting_level < recipe_level { progress_mod(recipe_level) as f64 / 100. } else { 1. };
+    let p2 = p1 * penalty;
+    let condition = if state.condition == StatusCondition::MALLEABLE { 1.5 } else { 1. };
+    let mut buffs = 1.;
     if state.veneration > 0 {
-        efficiency_coef += 0.5
+        buffs += 0.5
     }
     if state.muscle_memory > 0 {
-        efficiency_coef += 1.;
+        buffs += 1.;
     }
-    let efficiency: f64 = base_efficiency * efficiency_coef;
-    let craftsmanship = params.player.craftsmanship as f64;
-    let item = &params.item;
-    let raw_level = params.player.raw_level;
-    let mut progress: f64 = (efficiency / 100. * ((0.21 * craftsmanship + 2.) * (10000. + craftsmanship) / (10000. + item.standard_craftsmanship as f64) * craftsmanship_factor(raw_level, item.internal_level)).floor()).floor();
-    if state.condition == StatusCondition::MALLEABLE {
-        progress *= 1.5
-    }
+    let efficiency = base_efficiency * buffs;
+    let progress = ((p2 as i64) as f64 * condition * efficiency / 100.) as i64;
 
-    state.progress += progress as i64;
+    state.progress += progress;
     state.muscle_memory = 0;
 }
 
 fn produce_quality(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64, inner_quiet_progress: i64) {
-    let mut efficiency_coefficient: f64 = 1.;
+    let crafting_level = crafting_level(params.player.job_level);
+    let recipe_level = params.item.recipe_level;
+    let q1 = params.player.control as f64 * 10. / quality_div(recipe_level) as f64 + 35.;
+    let penalty = if crafting_level < recipe_level { quality_mod(recipe_level) as f64 / 100. } else { 1. };
+    let q2 = q1 * penalty;
+    let condition = if state.condition == StatusCondition::POOR {
+        0.5
+    } else if state.condition == StatusCondition::GOOD {
+        1.5
+    } else if state.condition == StatusCondition::EXCELLENT {
+        4.
+    } else {
+        1.
+    };
+    let mut buffs: f64 = 1.;
     if state.innovation > 0 {
-        efficiency_coefficient += 0.5;
+        buffs += 0.5;
     }
     if state.great_strides > 0 {
-        efficiency_coefficient += 1.;
+        buffs += 1.;
     }
-    let efficiency = base_efficiency * efficiency_coefficient;
-    let inner_quiet_coefficient = f64::max(1., 1. + (state.inner_quiet as f64 - 1.) * 0.2);
-    let control = params.player.control as f64 * inner_quiet_coefficient;
-    let raw_level = params.player.raw_level;
-    let item = &params.item;
 
-    let mut quality = (efficiency / 100. * ((0.35 * control as f64 + 35.) * (10000. + control) / (10000. + item.standard_control as f64) * control_factor(raw_level, item.internal_level)).floor()).floor();
-    if state.condition == StatusCondition::POOR {
-        quality *= 0.5;
-    }
-    if state.condition == StatusCondition::GOOD {
-        quality *= 1.5;
-    }
-    if state.condition == StatusCondition::EXCELLENT {
-        quality *= 4.
-    }
+    let efficiency = base_efficiency * (1. + state.inner_quiet as f64 / 10.) * buffs;
+    let quality = ((q2 as i64) as f64 * condition * efficiency / 100.) as i64;
 
     state.quality += quality as i64;
-    if state.inner_quiet > 0 {
-        state.inner_quiet += inner_quiet_progress;
-    }
+    state.inner_quiet += inner_quiet_progress;
     if state.great_strides > 0 {
         state.great_strides = 0;
     }
@@ -177,7 +178,8 @@ fn binary_result_states(success_result: CraftState, failed_result: CraftState, c
 
 fn apply_basic_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
-    produce_progress(params, &mut next_state, 120.);
+    let efficiency = if params.player.job_level >= 31 { 120. } else { 100. };
+    produce_progress(params, &mut next_state, efficiency);
     deterministic(next_state)
 }
 
@@ -193,14 +195,6 @@ fn apply_masters_mend(state: &CraftState) -> ProbabilisticResult {
     deterministic(next_state)
 }
 
-fn apply_inner_quiet(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    if state.inner_quiet == 0 {
-        next_state.inner_quiet = 1;
-    }
-    deterministic(next_state)
-}
-
 fn apply_delicate_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
     produce_progress(params, &mut next_state, 100.);
@@ -210,13 +204,15 @@ fn apply_delicate_synthesis(params: &CraftParameter, state: &CraftState) -> Prob
 
 fn apply_careful_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
-    produce_progress(params, &mut next_state, 150.);
+    let efficiency = if params.player.job_level >= 82 { 180. } else { 150. };
+    produce_progress(params, &mut next_state, efficiency);
     deterministic(next_state)
 }
 
 fn apply_groundwork(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
-    let efficiency = if state.durability < 0 { 150. } else { 300. };
+    let base_efficiency = if params.player.job_level >= 86 { 360. } else { 300. };
+    let efficiency = if state.durability < 0 { base_efficiency / 2. } else { base_efficiency };
     produce_progress(params, &mut next_state, efficiency);
     deterministic(next_state)
 }
@@ -227,7 +223,7 @@ fn apply_observe(state: &CraftState) -> ProbabilisticResult {
 
 fn apply_byregot_blessing(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
-    let efficiency = f64::max(100., 20. * (state.inner_quiet - 1) as f64 + 100.);
+    let efficiency = 20. * state.inner_quiet as f64 + 100.;
     produce_quality(params, &mut next_state, efficiency, 0);
     next_state.inner_quiet = 0;
     deterministic(next_state)
@@ -242,7 +238,8 @@ fn apply_preparatory_touch(params: &CraftParameter, state: &CraftState) -> Proba
 fn apply_rapid_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let failed_state = state.clone();
     let mut success_state = state.clone();
-    produce_progress(params, &mut success_state, 500.);
+    let efficiency = if params.player.job_level >= 63 { 500. } else { 250. };  // todo: check if this number is correct
+    produce_progress(params, &mut success_state, efficiency);
     binary_result_states(success_state, failed_state, state, 0.5)
 }
 
@@ -263,17 +260,6 @@ fn apply_precise_touch(params: &CraftParameter, state: &CraftState) -> Probabili
     let mut next_state = state.clone();
     produce_quality(params, &mut next_state, 150., 2);
     deterministic(next_state)
-}
-
-fn apply_patient_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 100., 0);
-    let mut failed_state = next_state.clone();
-    let mut success_state = next_state.clone();
-
-    failed_state.inner_quiet = (state.inner_quiet + 1) / 2;
-    success_state.inner_quiet *= 2;
-    binary_result_states(success_state, failed_state, state, 0.5)
 }
 
 fn apply_tricks_of_the_trade(state: &CraftState) -> ProbabilisticResult {
@@ -372,13 +358,30 @@ fn apply_manipulation(state: &CraftState) -> ProbabilisticResult {
     deterministic(next_state)
 }
 
+fn apply_advanced_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+    let mut next_state = state.clone();
+    produce_quality(params, &mut next_state, 150., 1);
+    deterministic(next_state)
+}
+
+fn apply_prudent_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+    let mut next_state = state.clone();
+    produce_progress(params, &mut next_state, 180.);
+    deterministic(next_state)
+}
+
+fn apply_trained_finesse(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+    let mut next_state = state.clone();
+    produce_quality(params, &mut next_state, 100., 1);
+    deterministic(next_state)
+}
+
 impl CraftAction {
     fn base_cp_cost(&self, state: &CraftState) -> i64 {
         match self {
             CraftAction::BasicSynthesis => 0,
             CraftAction::BasicTouch => 18,
             CraftAction::MastersMend => 88,
-            CraftAction::InnerQuiet => 18,
             CraftAction::DelicateSynthesis => 32,
             CraftAction::CarefulSynthesis => 7,
             CraftAction::Groundwork => 18,
@@ -389,7 +392,6 @@ impl CraftAction {
             CraftAction::IntensiveSynthesis => 6,
             CraftAction::HastyTouch => 0,
             CraftAction::PreciseTouch => 18,
-            CraftAction::PatientTouch => 6,
             CraftAction::TrickOfTheTrade => 0,
             CraftAction::Innovation => 18,
             CraftAction::Veneration => 18,
@@ -404,6 +406,9 @@ impl CraftAction {
             CraftAction::GreatStrides => 32,
             CraftAction::FinalAppraisal => 1,
             CraftAction::Manipulation => 96,
+            CraftAction::AdvancedTouch => if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::StandardTouch { 18 } else { 46 },
+            CraftAction::PrudentSynthesis => 18,
+            CraftAction::TrainedFinesse => 32,
         }
     }
 
@@ -421,7 +426,6 @@ impl CraftAction {
             CraftAction::BasicSynthesis => 10,
             CraftAction::BasicTouch => 10,
             CraftAction::MastersMend => 0,
-            CraftAction::InnerQuiet => 0,
             CraftAction::DelicateSynthesis => 10,
             CraftAction::CarefulSynthesis => 10,
             CraftAction::Groundwork => 20,
@@ -432,7 +436,6 @@ impl CraftAction {
             CraftAction::IntensiveSynthesis => 10,
             CraftAction::HastyTouch => 10,
             CraftAction::PreciseTouch => 10,
-            CraftAction::PatientTouch => 10,
             CraftAction::TrickOfTheTrade => 0,
             CraftAction::Innovation => 0,
             CraftAction::Veneration => 0,
@@ -447,6 +450,9 @@ impl CraftAction {
             CraftAction::GreatStrides => 0,
             CraftAction::FinalAppraisal => 0,
             CraftAction::Manipulation => 0,
+            CraftAction::AdvancedTouch => 10,
+            CraftAction::PrudentSynthesis => 5,
+            CraftAction::TrainedFinesse => 0,
         }
     }
 
@@ -461,7 +467,45 @@ impl CraftAction {
         cost
     }
 
-    pub fn is_playable(&self, state: &CraftState) -> bool {
+    fn action_level(&self) -> i64 {
+        match self {
+            CraftAction::BasicSynthesis => 1,
+            CraftAction::BasicTouch => 5,
+            CraftAction::MastersMend => 7,
+            CraftAction::DelicateSynthesis => 76,
+            CraftAction::CarefulSynthesis => 62,
+            CraftAction::Groundwork => 72,
+            CraftAction::Observe => 13,
+            CraftAction::ByregotBlessing => 50,
+            CraftAction::PreparatoryTouch => 71,
+            CraftAction::RapidSynthesis => 9,
+            CraftAction::IntensiveSynthesis => 78,
+            CraftAction::HastyTouch => 30,
+            CraftAction::PreciseTouch => 53,
+            CraftAction::TrickOfTheTrade => 13,
+            CraftAction::Innovation => 26,
+            CraftAction::Veneration => 15,
+            CraftAction::MuscleMemory => 54,
+            CraftAction::FocusedSynthesis => 67,
+            CraftAction::StandardTouch => 18,
+            CraftAction::FocusedTouch => 68,
+            CraftAction::Reflect => 69,
+            CraftAction::WasteNot => 15,
+            CraftAction::WasteNotII => 47,
+            CraftAction::PrudentTouch => 66,
+            CraftAction::GreatStrides => 21,
+            CraftAction::FinalAppraisal => 42,
+            CraftAction::Manipulation => 65,
+            CraftAction::AdvancedTouch => 84,
+            CraftAction::PrudentSynthesis => 88,
+            CraftAction::TrainedFinesse => 90,
+        }
+    }
+
+    pub fn is_playable(&self, params: &CraftParameter, state: &CraftState) -> bool {
+        if params.player.job_level < self.action_level() {
+            return false;
+        }
         if state.result != CraftResult::ONGOING {
             return false;
         }
@@ -476,6 +520,8 @@ impl CraftAction {
             Self::MuscleMemory => state.prev_action.is_none(),
             Self::Reflect => state.prev_action.is_none(),
             Self::PrudentTouch => state.waste_not <= 0,
+            Self::PrudentSynthesis => state.waste_not <= 0,
+            Self::TrainedFinesse => state.inner_quiet == 10,
             _ => true
         }
     }
@@ -491,7 +537,6 @@ impl CraftAction {
             Self::BasicSynthesis => apply_basic_synthesis(params, &state),
             Self::BasicTouch => apply_basic_touch(params, &state),
             Self::MastersMend => apply_masters_mend(&state),
-            Self::InnerQuiet => apply_inner_quiet(&state),
             Self::DelicateSynthesis => apply_delicate_synthesis(params, &state),
             Self::CarefulSynthesis => apply_careful_synthesis(params, &state),
             Self::Groundwork => apply_groundwork(params, &state),
@@ -502,7 +547,6 @@ impl CraftAction {
             Self::IntensiveSynthesis => apply_intensive_synthesis(params, &state),
             Self::HastyTouch => apply_hasty_touch(params, &state),
             Self::PreciseTouch => apply_precise_touch(params, &state),
-            Self::PatientTouch => apply_patient_touch(params, &state),
             Self::TrickOfTheTrade => apply_tricks_of_the_trade(&state),
             Self::Innovation => apply_innovation(&state),
             Self::Veneration => apply_veneration(&state),
@@ -517,6 +561,9 @@ impl CraftAction {
             Self::GreatStrides => apply_great_strides(&state),
             Self::FinalAppraisal => apply_final_appraisal(&state),
             Self::Manipulation => apply_manipulation(&state),
+            Self::AdvancedTouch => apply_advanced_touch(params, &state),
+            Self::PrudentSynthesis => apply_prudent_synthesis(params, &state),
+            Self::TrainedFinesse => apply_trained_finesse(params, &state),
         }
     }
 
@@ -538,7 +585,6 @@ impl CraftAction {
             Self::BasicSynthesis,
             Self::BasicTouch,
             Self::MastersMend,
-            Self::InnerQuiet,
             Self::DelicateSynthesis,
             Self::CarefulSynthesis,
             Self::Groundwork,
@@ -549,7 +595,6 @@ impl CraftAction {
             Self::IntensiveSynthesis,
             Self::HastyTouch,
             Self::PreciseTouch,
-            Self::PatientTouch,
             Self::TrickOfTheTrade,
             Self::Innovation,
             Self::Veneration,
@@ -564,6 +609,9 @@ impl CraftAction {
             Self::GreatStrides,
             Self::FinalAppraisal,
             Self::Manipulation,
+            Self::AdvancedTouch,
+            Self::PrudentSynthesis,
+            Self::TrainedFinesse,
         ]
     }
 }

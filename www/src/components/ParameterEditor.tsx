@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Col, Form, Row } from "react-bootstrap";
 import { useLanguage } from "../hooks/useLanguage";
-import { CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter, suggestedControls, suggestedCraftsmanships } from "../models/gamestate";
+import { CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter } from "../models/gamestate";
 import { translationProvider } from "../translation";
 
 const levelTable = {
@@ -131,13 +131,9 @@ export function ParameterEditor(props: Props) {
         onConfigChange({...config, params: newParams});
     }
     function onRecipeLevelChange(newRecipeLevel: number) {
-        const newStandardCraftsmanship = suggestedCraftsmanships[newRecipeLevel];
-        const newStandardControl = suggestedControls[newRecipeLevel];
         onItemParameterChange({
             ...config.params.item,
-            internal_level: newRecipeLevel,
-            standard_craftsmanship: newStandardCraftsmanship,
-            standard_control: newStandardControl
+            recipe_level: newRecipeLevel,
         })
     }
     const recipeLevels = Object.keys(levelTable);
@@ -147,7 +143,7 @@ export function ParameterEditor(props: Props) {
         <Row>
             <Form.Group as={Col}>
                 <Form.Label>{t("ClassLevel")}</Form.Label>
-                <Form.Control value={config.params.player.raw_level} onChange={(e) => onPlayerParameterChange({...config.params.player, raw_level: parseInt(e.target.value)})}/>
+                <Form.Control value={config.params.player.job_level} onChange={(e) => onPlayerParameterChange({...config.params.player, job_level: parseInt(e.target.value)})}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("Craftsmanship")}</Form.Label>
@@ -167,7 +163,7 @@ export function ParameterEditor(props: Props) {
                 <Form.Label>{t("RecipeLevel")}</Form.Label>
                 <Form.Control as={"select"} onChange={(e) => onRecipeLevelChange(parseInt(e.target.value))}>
                     {recipeLevels.map((recipeLevel) => {
-                        return <option key={recipeLevel} value={levelTable[recipeLevel]} selected={levelTable[recipeLevel] === config.params.item.internal_level}>{recipeLevel}</option>
+                        return <option key={recipeLevel} value={levelTable[recipeLevel]} selected={levelTable[recipeLevel] === config.params.item.recipe_level}>{recipeLevel}</option>
                     })}
                 </Form.Control>
             </Form.Group>

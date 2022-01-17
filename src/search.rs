@@ -1,6 +1,6 @@
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
 use crate::action::{CraftAction, buff_turns, ProbabilisticResult, ProbabilisticState};
-use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, FocusedTouch, InnerQuiet, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, PatientTouch, FocusedSynthesis, FinalAppraisal, WasteNot, WasteNotII};
+use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, FocusedTouch, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, FocusedSynthesis, FinalAppraisal, WasteNot, WasteNotII, AdvancedTouch, TrainedFinesse};
 
 #[derive(PartialOrd, PartialEq, Debug)]
 pub struct DFSResult {
@@ -25,11 +25,11 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
     let mut state = state.clone();
     while state.result == CraftResult::ONGOING {
         let synthesis_playable = is_positive_durability_after_action(params, &state, BasicSynthesis);
-        let touch_playable = BasicTouch.is_playable(&state) && is_positive_durability_after_action(params, &state, BasicTouch);
-        let mend_playable = MastersMend.is_playable(&state);
+        let touch_playable = BasicTouch.is_playable(&params, &state) && is_positive_durability_after_action(params, &state, BasicTouch);
+        let mend_playable = MastersMend.is_playable(&params, &state);
         let action: CraftAction;
         if !(synthesis_playable || touch_playable || mend_playable) {
-            action = CraftAction::all_actions().into_iter().filter(|action| action.is_playable(&state)).next().unwrap();
+            action = CraftAction::all_actions().into_iter().filter(|action| action.is_playable(&params, &state)).next().unwrap();
         } else if !(synthesis_playable || touch_playable) {
             action = MastersMend
         } else if state.cp > 200 && state.manipulation == 0 {
@@ -51,10 +51,10 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
             } else if touch_playable {
                 if state.prev_action.is_some() && state.prev_action.unwrap() == BasicTouch {
                     action = StandardTouch;
+                } else if state.prev_action.is_some() && state.prev_action.unwrap() == StandardTouch {
+                        action = AdvancedTouch;
                 } else if state.prev_action.is_some() && state.prev_action.unwrap() == Observe {
                     action = FocusedTouch;
-                } else if state.inner_quiet == 0 {
-                    action = InnerQuiet;
                 } else if state.cp >= 18 * 3 && state.innovation == 0 {
                     action = Innovation;
                 } else {
@@ -79,8 +79,8 @@ fn is_completable(params: &CraftParameter, state: &CraftState) -> bool {
 
 fn is_quality_action(action: &CraftAction) -> bool {
     match action {
-        BasicTouch | ByregotBlessing | PreparatoryTouch |
-        HastyTouch | PreciseTouch | PatientTouch | Innovation | StandardTouch | FocusedTouch | GreatStrides |
+        BasicTouch | ByregotBlessing | PreparatoryTouch | AdvancedTouch | TrainedFinesse |
+        HastyTouch | PreciseTouch | Innovation | StandardTouch | FocusedTouch | GreatStrides |
         PrudentTouch => true,
         _ => false
     }
@@ -91,10 +91,8 @@ fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &Cr
         return *action == FocusedTouch || *action == FocusedSynthesis || *action == BasicSynthesis
     }
     match action {
-        InnerQuiet => state.inner_quiet <= 0,
         FinalAppraisal => state.final_appraisal <= 0,
         BasicTouch => state.prev_action != Some(BasicTouch),
-        PatientTouch => state.inner_quiet <= 8,
         RapidSynthesis => RapidSynthesis.play(params, state).iter().all(|proba_state| proba_state.state.progress < params.item.max_progress),
         Veneration => buff_turns(state, 4) > state.veneration,
         Innovation => buff_turns(state, 4) > state.innovation,
@@ -121,7 +119,7 @@ pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult
     }
     let is_completable_state = is_completable(params, state);
     let actions: Vec<CraftAction> = CraftAction::all_actions().into_iter()
-        .filter(|action| action.is_playable(state))
+        .filter(|action| action.is_playable(params, state))
         .filter(|action| is_completable_state || !is_quality_action(action))
         .collect();
 

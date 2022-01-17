@@ -26,7 +26,7 @@ pub enum CraftResult {
 
 #[derive(Debug, Deserialize)]
 pub struct PlayerParameter {
-    pub raw_level: i64,
+    pub job_level: i64,
     pub craftsmanship: i64,
     pub control: i64,
     pub max_cp: i64,
@@ -34,12 +34,10 @@ pub struct PlayerParameter {
 
 #[derive(Debug, Deserialize)]
 pub struct ItemParameter {
-    pub internal_level: i64,
+    pub recipe_level: i64,
     pub max_durability: i64,
     pub max_progress: i64,
     pub max_quality: i64,
-    pub standard_craftsmanship: i64,
-    pub standard_control: i64,
     pub is_expert_recipe: bool,
 }
 
@@ -78,7 +76,7 @@ impl CraftState {
         self.quality = num::clamp(self.quality, 0, params.item.max_quality);
         self.cp = num::clamp(self.cp, 0, params.player.max_cp);
 
-        self.inner_quiet = num::clamp(self.inner_quiet, 0, 11);
+        self.inner_quiet = num::clamp(self.inner_quiet, 0, 10);
         self.innovation = max(0, self.innovation);
         self.veneration = max(0, self.veneration);
         self.muscle_memory = max(0, self.muscle_memory);
