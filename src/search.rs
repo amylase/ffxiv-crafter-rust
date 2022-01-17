@@ -131,7 +131,13 @@ pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult
         }
         let mut score = 0.;
         let mut upper_bound = 1.;
-        let next_condition = if action == CraftAction::FinalAppraisal { state.condition } else { StatusCondition::NORMAL };
+        let next_condition = if action == CraftAction::FinalAppraisal {
+            state.condition 
+        } else if state.condition == StatusCondition::EXCELLENT {
+            StatusCondition::POOR
+        } else {
+            StatusCondition::NORMAL 
+        };
         let next_states = action.play(params, state);
         let next_normal_states: Vec<&ProbabilisticState> = next_states.iter()
             .filter(|proba_state| proba_state.state.condition == next_condition)

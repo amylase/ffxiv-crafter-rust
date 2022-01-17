@@ -58,7 +58,6 @@ export interface ItemParameter {
     max_durability: number,
     max_progress: number,
     max_quality: number,
-    is_expert_recipe: boolean,
 }
 
 export interface PlayerParameter {

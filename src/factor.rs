@@ -1,7 +1,8 @@
+use core::panic;
 use std::collections::HashMap;
 use std::iter::FromIterator;
 use std::array::IntoIter;
-use crate::state::{CraftParameter, CraftState, StatusCondition};
+use crate::state::{CraftParameter, CraftState, StatusCondition, all_status_conditions};
 use lazy_static::lazy_static;
 
 // https://docs.google.com/document/d/1Fl5X16oPF-4X29v5PukCkVgcPhZsbzhKcoq6Us7fhKU/edit#
@@ -569,68 +570,196 @@ pub fn quality_mod(recipe_level: i64) -> i64 {
     QUALITY_MOD_TABLE[&recipe_level]
 }
 
-// patch 5.41
 lazy_static! {
-    static ref EXPERT_RECIPE_TRANSITIONS: HashMap<StatusCondition, f64> = HashMap::<StatusCondition, f64>::from_iter(IntoIter::new([
-        (StatusCondition::GOOD, 0.12),
-        (StatusCondition::PLIANT, 0.12),
-        (StatusCondition::STURDY, 0.15),
-        (StatusCondition::MALLEABLE, 0.12),
-        (StatusCondition::PRIMED, 0.12),
-        (StatusCondition::NORMAL, 0.37),
+    static ref CONDITION_MASK_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIter::new([
+        (1, 15),
+        (2, 15),
+        (3, 15),
+        (4, 15),
+        (5, 15),
+        (6, 15),
+        (7, 15),
+        (8, 15),
+        (9, 15),
+        (10, 15),
+        (11, 15),
+        (12, 15),
+        (13, 15),
+        (14, 15),
+        (15, 15),
+        (16, 15),
+        (17, 15),
+        (18, 15),
+        (19, 15),
+        (20, 15),
+        (21, 15),
+        (22, 15),
+        (23, 15),
+        (24, 15),
+        (25, 15),
+        (26, 15),
+        (27, 15),
+        (28, 15),
+        (29, 15),
+        (30, 15),
+        (31, 15),
+        (32, 15),
+        (33, 15),
+        (34, 15),
+        (35, 15),
+        (36, 15),
+        (37, 15),
+        (38, 15),
+        (39, 15),
+        (40, 15),
+        (41, 15),
+        (42, 15),
+        (43, 15),
+        (44, 15),
+        (45, 15),
+        (46, 15),
+        (47, 15),
+        (48, 15),
+        (49, 15),
+        (50, 15),
+        (55, 15),
+        (70, 15),
+        (90, 15),
+        (110, 15),
+        (115, 15),
+        (125, 15),
+        (130, 15),
+        (133, 15),
+        (136, 15),
+        (139, 15),
+        (142, 15),
+        (145, 15),
+        (148, 15),
+        (150, 15),
+        (160, 15),
+        (180, 15),
+        (210, 15),
+        (220, 15),
+        (250, 15),
+        (255, 15),
+        (265, 15),
+        (270, 15),
+        (273, 15),
+        (276, 15),
+        (279, 15),
+        (282, 15),
+        (285, 15),
+        (288, 15),
+        (290, 15),
+        (300, 15),
+        (320, 15),
+        (350, 15),
+        (380, 15),
+        (390, 15),
+        (395, 15),
+        (400, 15),
+        (403, 15),
+        (406, 15),
+        (409, 15),
+        (412, 15),
+        (415, 15),
+        (418, 15),
+        (430, 15),
+        (440, 15),
+        (450, 15),
+        (480, 15),
+        (481, 115),
+        (490, 15),
+        (511, 115),
+        (512, 115),
+        (513, 483),
+        (514, 115),
+        (515, 483),
+        (516, 499),
+        (517, 15),
+        (520, 15),
+        (525, 15),
+        (530, 15),
+        (535, 15),
+        (540, 15),
+        (545, 15),
+        (550, 15),
+        (555, 15),
+        (560, 15),
+        (570, 15),
+        (580, 15),
+        (610, 15),
+        (640, 15),
     ]));
+}  
+
+fn condition_mask(recipe_level: i64) -> i64 {
+    CONDITION_MASK_TABLE[&recipe_level]
 }
 
-fn normal_to_good(params: &CraftParameter) -> f64 {
-    let recipe_level = params.item.recipe_level;
-    let quality_assurance_buff = if params.player.job_level >= 63 { 0.02 } else { 0. };
-
-    let probability;
-    if recipe_level >= 430 {
-        probability = 0.10;
-    } else if recipe_level >= 406 {
-        probability = 0.15
-    } else if recipe_level >= 390 {
-        probability = 0.10
-    } else if recipe_level >= 300 {
-        probability = 0.10
-    } else if recipe_level >= 276 {
-        probability = 0.15
-    } else if recipe_level >= 255 {
-        probability = 0.20
-    } else if recipe_level >= 150 {
-        probability = 0.10
-    } else if recipe_level >= 136 {
-        probability = 0.15
-    } else {
-        probability = 0.25
-    }
-    return probability + quality_assurance_buff;
+fn is_expert_recipe(recipe_level: i64) -> bool {
+    condition_mask(recipe_level) != 15
 }
 
-
-fn normal_to_excellent(params: &CraftParameter) -> f64 {
-    let recipe_level = params.item.recipe_level;
-    if recipe_level >= 430 {
-        0.01
-    } else if recipe_level >= 390 {
-        0.02
-    } else if recipe_level >= 300 {
-        0.01
-    } else if recipe_level >= 255 {
-        0.02
-    } else if recipe_level >= 150 {
-        0.01
-    } else {
-        0.02
+fn expert_condition_probability(condition: StatusCondition) -> f64 {
+    match condition {
+        StatusCondition::NORMAL => panic!("don't obtain normal probability from a table. it must be calculated as a remainder of other probas."),
+        StatusCondition::GOOD => 0.12,
+        StatusCondition::EXCELLENT => 0.,
+        StatusCondition::POOR => 0.,
+        StatusCondition::CENTRED => 0.15,
+        StatusCondition::PLIANT => 0.12,
+        StatusCondition::STURDY => 0.15,
+        StatusCondition::MALLEABLE => 0.12,
+        StatusCondition::PRIMED => 0.12,
     }
 }
 
+fn condition_bit(condition: StatusCondition) -> i64 {
+    match condition {
+        StatusCondition::NORMAL => 1,
+        StatusCondition::GOOD => 2,
+        StatusCondition::EXCELLENT => 4,
+        StatusCondition::POOR => 8,
+        StatusCondition::CENTRED => 16,
+        StatusCondition::PLIANT => 32,
+        StatusCondition::STURDY => 64,
+        StatusCondition::MALLEABLE => 128,
+        StatusCondition::PRIMED => 256,
+    }
+}
 
 pub fn transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
-    if params.item.is_expert_recipe {
-        return EXPERT_RECIPE_TRANSITIONS.clone();
+    if is_expert_recipe(params.item.recipe_level) {
+        expert_recipe_transition_probabilities(params)
+    } else {
+        normal_recipe_transition_probabilities(params, state)
     }
+}
+
+fn expert_recipe_transition_probabilities(params: &CraftParameter) -> HashMap<StatusCondition, f64> {
+    let recipe_level = params.item.recipe_level;
+    let mask = condition_mask(recipe_level);
+    let mut normal_proba = 1.;
+
+    let mut probas = HashMap::new();
+    for condition in all_status_conditions() {
+        if condition == StatusCondition::NORMAL {
+            continue;
+        }
+        let bit = condition_bit(condition);
+        if mask & bit != 0 {
+            let proba = expert_condition_probability(condition);
+            normal_proba -= proba;
+            probas.insert(condition, proba);
+        }
+    }
+
+    probas.insert(StatusCondition::NORMAL, normal_proba);
+    probas
+}
+
+fn normal_recipe_transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
     if state.condition == StatusCondition::EXCELLENT {
         return HashMap::<StatusCondition, f64>::from_iter(IntoIter::new([
             (StatusCondition::POOR, 1.),
@@ -642,8 +771,8 @@ pub fn transition_probabilities(params: &CraftParameter, state: &CraftState) -> 
         ]));
     }
     if state.condition == StatusCondition::NORMAL {
-        let good_proba = normal_to_good(params);
-        let excellent_proba = normal_to_excellent(params);
+        let good_proba = if params.player.job_level >= 63 { 0.25 } else { 0.2 };
+        let excellent_proba = 0.04;
         let normal_proba = 1. - good_proba - excellent_proba;
         return HashMap::<StatusCondition, f64>::from_iter(IntoIter::new([
             (StatusCondition::NORMAL, normal_proba),

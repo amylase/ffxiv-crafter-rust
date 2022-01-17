@@ -17,6 +17,20 @@ pub enum StatusCondition {
     PRIMED,
 }
 
+pub fn all_status_conditions() -> Vec<StatusCondition> {
+    vec![
+        StatusCondition::NORMAL,
+        StatusCondition::GOOD,
+        StatusCondition::EXCELLENT,
+        StatusCondition::POOR,
+        StatusCondition::CENTRED,
+        StatusCondition::PLIANT,
+        StatusCondition::STURDY,
+        StatusCondition::MALLEABLE,
+        StatusCondition::PRIMED,
+    ]
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum CraftResult {
     ONGOING,
@@ -38,7 +52,6 @@ pub struct ItemParameter {
     pub max_durability: i64,
     pub max_progress: i64,
     pub max_quality: i64,
-    pub is_expert_recipe: bool,
 }
 
 #[derive(Debug, Deserialize)]

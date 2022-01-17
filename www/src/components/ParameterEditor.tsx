@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Col, Form, Row } from "react-bootstrap";
 import { useLanguage } from "../hooks/useLanguage";
-import { CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter } from "../models/gamestate";
+import { CraftConfiguration, ItemParameter, PlayerParameter } from "../models/gamestate";
 import { translationProvider } from "../translation";
 
 const levelTable = {
@@ -99,8 +99,26 @@ const levelTable = {
     "80": 430,
     "80★": 440,
     "80★★": 450,
-    "80★★★": 480,
-    "80★★★★": 516,
+    "80★★★ (480)": 480,
+    "80★★★ (490)": 490,
+    "80★★★★ (511)": 511,
+    "80★★★★ (512)": 512,
+    "80★★★★ (513)": 513,
+    "80★★★★ (514)": 514,
+    "80★★★★ (515)": 515,
+    "80★★★★★": 516,
+    "81": 517,
+    "82": 520,
+    "83": 525,
+    "84": 530,
+    "85": 535,
+    "86": 540,
+    "87": 545,
+    "88": 550,
+    "89": 555,
+    "90": 560,
+    "90★": 570,
+    "90★★": 580,
 }
 
 interface Props {
@@ -182,10 +200,6 @@ export function ParameterEditor(props: Props) {
             <Form.Group as={Col}>
                 <Form.Label>{t("InitialQuality")}</Form.Label>
                 <Form.Control value={config.initialQuality} onChange={(e) => onConfigChange({...config, initialQuality: parseInt(e.target.value)})}/>
-            </Form.Group>
-            <Form.Group as={Col}>
-                <Form.Label>{t("IsExpert")}</Form.Label>
-                <Form.Check checked={config.params.item.is_expert_recipe} onChange={(e) => onItemParameterChange({...config.params.item, is_expert_recipe: e.target.checked})}/>
             </Form.Group>
         </Row>
     </Form>

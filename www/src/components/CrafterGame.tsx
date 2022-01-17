@@ -21,7 +21,6 @@ function getInitialConfig(): CraftConfiguration {
         max_durability: 55,
         max_progress: 5059,
         max_quality: 15474,
-        is_expert_recipe: true,
     };
     const playerParams = {
         job_level: 80,
