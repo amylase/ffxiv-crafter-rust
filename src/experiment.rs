@@ -24,7 +24,7 @@ fn main() {
         item,
         player
     };
-    let mut state = params.initial_state();
+    let mut state = params.initial_state(0);
 
     let depth = 3;
     let seed = 0;

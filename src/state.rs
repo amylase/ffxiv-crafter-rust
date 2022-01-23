@@ -38,7 +38,7 @@ pub enum CraftResult {
     SUCCESS,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PlayerParameter {
     pub job_level: i64,
     pub craftsmanship: i64,
@@ -46,7 +46,7 @@ pub struct PlayerParameter {
     pub max_cp: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ItemParameter {
     pub recipe_level: i64,
     pub max_durability: i64,
@@ -54,7 +54,7 @@ pub struct ItemParameter {
     pub max_quality: i64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CraftParameter {
     pub player: PlayerParameter,
     pub item: ItemParameter,
@@ -102,12 +102,11 @@ impl CraftState {
 }
 
 impl CraftParameter {
-    #[allow(dead_code)]
-    pub fn initial_state(&self) -> CraftState {
+    pub fn initial_state(&self, initial_quality: i64) -> CraftState {
         CraftState {
             durability: self.item.max_durability,
             progress: 0,
-            quality: 0,
+            quality: initial_quality,
             cp: self.player.max_cp,
             condition: StatusCondition::NORMAL,
             inner_quiet: 0,

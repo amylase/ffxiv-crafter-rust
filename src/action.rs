@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use crate::state::{CraftParameter, CraftResult, CraftState, StatusCondition};
 use crate::factor::{transition_probabilities, progress_div, crafting_level, progress_mod, quality_div, quality_mod};
-use strum_macros::EnumString;
+use strum_macros::{EnumString, AsRefStr};
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize, EnumString)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize, EnumString, AsRefStr)]
 pub enum CraftAction {
     BasicSynthesis,
     BasicTouch,
@@ -37,7 +37,7 @@ pub enum CraftAction {
     TrainedFinesse,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProbabilisticState {
     pub state: CraftState,
     pub probability: f64,
@@ -318,7 +318,7 @@ fn apply_focused_touch(params: &CraftParameter, state: &CraftState, prev_action:
 fn apply_reflect(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
     produce_quality(params, &mut next_state, 100., 0);
-    next_state.inner_quiet = 3;
+    next_state.inner_quiet = 2;
     deterministic(next_state)
 }
 
@@ -399,7 +399,7 @@ impl CraftAction {
             CraftAction::FocusedSynthesis => 5,
             CraftAction::StandardTouch => if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::BasicTouch { 18 } else { 32 },
             CraftAction::FocusedTouch => 18,
-            CraftAction::Reflect => 24,
+            CraftAction::Reflect => 6,
             CraftAction::WasteNot => 56,
             CraftAction::WasteNotII => 98,
             CraftAction::PrudentTouch => 25,
