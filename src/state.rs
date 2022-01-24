@@ -31,7 +31,7 @@ pub fn all_status_conditions() -> Vec<StatusCondition> {
     ]
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, Serialize, Hash)]
 pub enum CraftResult {
     ONGOING,
     FAILED,
@@ -60,7 +60,7 @@ pub struct CraftParameter {
     pub item: ItemParameter,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, Hash)]
 pub struct CraftState {
     pub durability: i64,
     pub progress: i64,

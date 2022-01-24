@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize};
 use regex::{Regex};
 use ffxiv_crafter_rust::{CraftParameter, initial_state, CraftState, CraftResult, play_action, CraftAction, ProbabilisticResult};
@@ -17,7 +19,8 @@ fn log_consistency_test(testcase_str: &str) {
 
     let params = &test_case.crafter_parameters;
     let params_str = serde_json::to_string(&test_case.crafter_parameters).unwrap();
-    let mut states: Vec<CraftState> = vec![serde_json::from_str(&initial_state(&params_str, test_case.initial_quality)).unwrap()];
+    let mut states: HashSet<CraftState> = HashSet::new();
+    states.insert(serde_json::from_str(&initial_state(&params_str, test_case.initial_quality)).unwrap());
     let mut log_entries: Vec<Vec<&str>> = vec![];
     let mut latest_entry: Vec<&str> = vec![];
     for line in test_case.log.split("\n") {
@@ -35,13 +38,13 @@ fn log_consistency_test(testcase_str: &str) {
         log_entries.push(latest_entry);
     }
 
-    for entry in log_entries {
-        let mut next_states: Vec<CraftState> = vec![];
+    for entry in &log_entries {
+        let mut next_states: HashSet<CraftState> = HashSet::new();
         if entry.len() == 0 {
             continue;
         }
         let first_line = entry.get(0).unwrap();
-        if first_line.contains("製作を開始") {
+        if first_line.contains("を開始した") {
             println!("ignoring this entry (start crafting)");
             continue;
         }
@@ -49,18 +52,18 @@ fn log_consistency_test(testcase_str: &str) {
             println!("ignoring this entry (preparing ingredients)");
             continue;
         }
-        if first_line.contains("完成させた") {
+        if first_line.contains("完成させた") || first_line.contains("練習に成功"){
             println!("successful crafting");
             for state in &states {
                 if state.result == CraftResult::SUCCESS {
-                    next_states.push(state.clone());
+                    next_states.insert(state.clone());
                 }
             }
-        } else if first_line.contains("製作に失敗") {
+        } else if first_line.contains("製作に失敗") || first_line.contains("練習に失敗") {
             println!("unsuccessful crafting");
             for state in &states {
                 if state.result == CraftResult::FAILED {
-                    next_states.push(state.clone());
+                    next_states.insert(state.clone());
                 }
             }
         } else if first_line.contains("成功") || first_line.contains("失敗") {
@@ -109,7 +112,7 @@ fn log_consistency_test(testcase_str: &str) {
                 for next_state_candidate in &next_state_candidates {
                     let s = &next_state_candidate.state;
                     if s.progress == expected_progress && s.quality == expected_quality && s.durability == expected_durability {
-                        next_states.push(s.clone());
+                        next_states.insert(s.clone());
                     }
                 }
             }
@@ -141,6 +144,19 @@ fn parse_japanese_action_name(action_name: &str) -> CraftAction {
         "ヴェネレーション" => CraftAction::Veneration,
         "倹約" => CraftAction::WasteNot,
         "下地作業" => CraftAction::Groundwork,
+        "倹約加工" => CraftAction::PrudentTouch,
+        "倹約作業" => CraftAction::PrudentSynthesis,
+        "集中加工" => CraftAction::PreciseTouch,
+        "集中作業" => CraftAction::IntensiveSynthesis,
+        "マニピュレーション" => CraftAction::Manipulation,
+        "匠の神業" => CraftAction::TrainedFinesse,
+        "精密作業" => CraftAction::DelicateSynthesis,
+        "加工" => CraftAction::BasicTouch,
+        "中級加工" => CraftAction::StandardTouch,
+        "上級加工" => CraftAction::AdvancedTouch,
+        "模範作業" => CraftAction::CarefulSynthesis,
+        "経過観察" => CraftAction::Observe,
+        "注視加工" => CraftAction::FocusedTouch,
         _ => panic!("unknown action name: {}", action_name)
     }
 }
@@ -148,4 +164,19 @@ fn parse_japanese_action_name(action_name: &str) -> CraftAction {
 #[test]
 fn log_consistency_test1() {
     log_consistency_test(include_str!("logs/log1.json"));
+}
+
+#[test]
+fn log_consistency_test2() {
+    log_consistency_test(include_str!("logs/log2.json"));
+}
+
+#[test]
+fn log_consistency_test3() {
+    log_consistency_test(include_str!("logs/log3.json"));
+}
+
+#[test]
+fn log_consistency_test4() {
+    log_consistency_test(include_str!("logs/log4.json"));
 }
