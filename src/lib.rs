@@ -79,6 +79,7 @@ pub fn initial_state(params_str: &str, initial_quality: i64) -> String {
     serde_json::to_string(&state).unwrap().to_string()
 }
 
+#[cfg(test)]
 mod test {
     use crate::action::CraftAction;
     use super::available_actions;
