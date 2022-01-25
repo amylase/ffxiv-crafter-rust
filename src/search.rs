@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+use std::time::SystemTime;
+
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
 use crate::action::{CraftAction, buff_turns, ProbabilisticResult, ProbabilisticState};
 use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, FocusedTouch, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, FocusedSynthesis, FinalAppraisal, WasteNot, WasteNotII, AdvancedTouch, TrainedFinesse};
 
-#[derive(PartialOrd, PartialEq, Debug)]
+#[derive(PartialOrd, PartialEq, Debug, Clone)]
 pub struct DFSResult {
     pub best_score: f64,
     pub best_action_path: Vec<CraftAction>,
@@ -52,7 +55,7 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
                 if state.prev_action.is_some() && state.prev_action.unwrap() == BasicTouch {
                     action = StandardTouch;
                 } else if state.prev_action.is_some() && state.prev_action.unwrap() == StandardTouch {
-                        action = AdvancedTouch;
+                    action = AdvancedTouch;
                 } else if state.prev_action.is_some() && state.prev_action.unwrap() == Observe {
                     action = FocusedTouch;
                 } else if state.cp >= 18 * 3 && state.innovation == 0 {
@@ -90,6 +93,9 @@ fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &Cr
     if state.prev_action == Some(Observe) {
         return *action == FocusedTouch || *action == FocusedSynthesis || *action == BasicSynthesis
     }
+    if is_quality_action(action) {
+        return state.quality < params.item.max_quality
+    }
     match action {
         FinalAppraisal => state.final_appraisal <= 0,
         BasicTouch => state.prev_action != Some(BasicTouch),
@@ -99,23 +105,49 @@ fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &Cr
         Manipulation => buff_turns(state, 8) > state.manipulation,
         WasteNot => buff_turns(state, 4) > state.waste_not,
         WasteNotII => buff_turns(state, 8) > state.waste_not,
+        MastersMend => state.durability < params.item.max_durability,
         _ => true
     }
 }
 
+pub fn adaptive_dfs(params: &CraftParameter, state: &CraftState) -> DFSResult {
+    let max_depth = 10;
+    for depth in 3..max_depth {
+        let time = SystemTime::now();
+        let result = dfs(params, state, depth);
+        let elapsed = time.elapsed().unwrap().as_secs_f64();
+        if elapsed >= 0.2 {
+            return result;
+        } 
+    }
+    dfs(params, state, max_depth)
+}
+
 pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult {
+    let mut memo: HashMap<CraftState, DFSResult> = HashMap::new();
+    _dfs(params, state, depth, &mut memo)
+}
+
+fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut HashMap<CraftState, DFSResult>) -> DFSResult {
+    if memo.contains_key(state) {
+        return memo.get(state).unwrap().clone()
+    }
     if state.result != CraftResult::ONGOING {
-        return DFSResult {
+        let result =  DFSResult {
             best_score: terminal_score(params, state),
             best_action_path: vec![]
-        }
+        };
+        memo.insert(state.clone(), result.clone());
+        return result
     }
     if depth == 0 {
         let terminal_state = playout(params, state);
-        return DFSResult {
+        let result = DFSResult {
             best_score: terminal_score(params, &terminal_state),
             best_action_path: vec![]
-        }
+        };
+        memo.insert(state.clone(), result.clone());
+        return result
     }
     let is_completable_state = is_completable(params, state);
     let actions: Vec<CraftAction> = CraftAction::all_actions().into_iter()
@@ -158,7 +190,7 @@ pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult
         let mut sub_results: Vec<DFSResult> = vec![];
         for proba_state in next_states {
             let next_depth = if action == CraftAction::FinalAppraisal || action == CraftAction::Observe { depth } else { depth - 1 };
-            let sub_result = dfs(params, &proba_state.state, next_depth);
+            let sub_result = _dfs(params, &proba_state.state, next_depth, memo);
             score += sub_result.best_score * proba_state.probability;
             upper_bound -= (1. - sub_result.best_score) * proba_state.probability;
             sub_results.push(sub_result);
@@ -177,5 +209,7 @@ pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult
         best_score = f64::max(best_score, score);
     }
 
-    results.into_iter().filter(|dfs_result| dfs_result.best_score == best_score).next().unwrap()
+    let result = results.into_iter().filter(|dfs_result| dfs_result.best_score == best_score).next().unwrap();
+    memo.insert(state.clone(), result.clone());
+    return result
 }

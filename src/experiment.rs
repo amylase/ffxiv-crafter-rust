@@ -26,8 +26,8 @@ fn main() {
     };
     let mut state = params.initial_state(0);
 
-    let depth = 3;
-    let seed = 0;
+    let _depth = 3;
+    let seed = 1000;
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     println!("{:?}", &params);
@@ -35,10 +35,8 @@ fn main() {
     let total_time = SystemTime::now();
     while state.result == state::CraftResult::ONGOING {
         println!("{:?}", state);
-        let current_score = search::terminal_score(&params, &search::playout(&params, &state));
-        println!("score: {:.3} (predicted quality: {})", current_score, (current_score * params.item.max_quality as f64) as i64);
         let time = SystemTime::now();
-        let dfs_result = search::dfs(&params, &state, depth);
+        let dfs_result = search::adaptive_dfs(&params, &state);
         let elapsed_sec = time.elapsed().unwrap().as_secs_f64();
         println!("{:?}, elapsed: {:.3}, score: {:.3} (predicted quality: {})", dfs_result.best_action_path, elapsed_sec, dfs_result.best_score, (dfs_result.best_score * params.item.max_quality as f64) as i64);
 

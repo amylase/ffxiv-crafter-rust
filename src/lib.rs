@@ -18,7 +18,7 @@ pub use action::{
     ProbabilisticResult
 };
 
-use crate::search::dfs;
+use crate::search::adaptive_dfs;
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
@@ -34,11 +34,11 @@ extern {
 }
 
 #[wasm_bindgen]
-pub fn search_best_move(params_str: &str, state_str: &str, depth: i64) -> String {
+pub fn search_best_move(params_str: &str, state_str: &str) -> String {
     let params: CraftParameter = serde_json::from_str(params_str).unwrap();
     let state: CraftState = serde_json::from_str(state_str).unwrap();
 
-    let dfs_result = dfs(&params, &state, depth);
+    let dfs_result = adaptive_dfs(&params, &state);
     serde_json::to_string(&dfs_result.best_action_path[0]).unwrap().to_string()
 }
 

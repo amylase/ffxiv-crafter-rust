@@ -1,8 +1,8 @@
 import * as wasm from "ffxiv-crafter-rust";
 import { CraftParameter, CraftState, CraftAction, ProbabilisticState } from "./models/gamestate";
 
-export function search_best_move(params: CraftParameter, state: CraftState, depth: number): CraftAction {
-    return JSON.parse(wasm.search_best_move(JSON.stringify(params), JSON.stringify(state), BigInt(depth)));
+export function search_best_move(params: CraftParameter, state: CraftState): CraftAction {
+    return JSON.parse(wasm.search_best_move(JSON.stringify(params), JSON.stringify(state)));
 }
 
 export function apply_action(params: CraftParameter, state: CraftState, action: CraftAction): ProbabilisticState[] {
