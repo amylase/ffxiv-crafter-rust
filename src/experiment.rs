@@ -1,45 +1,27 @@
-use std::time::SystemTime;
+use std::{time::SystemTime, ops::Range};
+use crate::state::{CraftState, CraftParameter, CraftResult, PlayerParameter, ItemParameter};
 use rand::{SeedableRng, Rng};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
-mod state;
 mod factor;
 mod search;
 mod action;
+mod state;
 
-
-fn main() {
-    let player = state::PlayerParameter {
-        job_level: 80,
-        craftsmanship: 2978,
-        control: 2787,
-        max_cp: 655
-    };
-    let item = state::ItemParameter {
-        recipe_level: 516,
-        max_durability: 55,
-        max_progress: 5059,
-        max_quality: 15474,
-    };
-    let params = state::CraftParameter {
-        item,
-        player
-    };
-    let mut state = params.initial_state(0);
-
-    let _depth = 3;
-    let seed = 1000;
+fn run(params: &CraftParameter, initial_quality: i64, seed: u64, verbose: bool) -> CraftState {
+    let mut state = params.initial_state(initial_quality);
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    println!("{:?}", &params);
+    if verbose { println!("{:?}", &params); }
 
-    let total_time = SystemTime::now();
-    while state.result == state::CraftResult::ONGOING {
-        println!("{:?}", state);
+    while state.result == CraftResult::ONGOING {
+        if verbose { println!("{:?}", state); }
         let time = SystemTime::now();
         let dfs_result = search::adaptive_dfs(&params, &state);
         let elapsed_sec = time.elapsed().unwrap().as_secs_f64();
-        println!("{:?}, elapsed: {:.3}, score: {:.3} (predicted quality: {})", dfs_result.best_action_path, elapsed_sec, dfs_result.best_score, (dfs_result.best_score * params.item.max_quality as f64) as i64);
-
+        if verbose {
+            println!("{:?}, elapsed: {:.3}, score: {:.3} (predicted quality: {})", dfs_result.best_action_path, elapsed_sec, dfs_result.best_score, (dfs_result.best_score * params.item.max_quality as f64) as i64);
+        }
         let next_action = dfs_result.best_action_path.into_iter().next().unwrap();
         let next_states = next_action.play(&params, &state);
 
@@ -55,8 +37,45 @@ fn main() {
         }
         state = next_state.unwrap();
     }
+    println!("{:?}", state);
+    return state;
+}
+
+fn score(params: &CraftParameter, state: &CraftState) -> f64 {
+    if state.result != CraftResult::SUCCESS {
+        return 0.
+    } else {
+        return state.quality as f64 / params.item.max_quality as f64
+    }
+}
+
+fn main() {
+    let player = PlayerParameter {
+        job_level: 80,
+        craftsmanship: 2978,
+        control: 2787,
+        max_cp: 655
+    };
+    let item = ItemParameter {
+        recipe_level: 516,
+        max_durability: 55,
+        max_progress: 5059,
+        max_quality: 15474,
+    };
+    let params = CraftParameter {
+        item,
+        player
+    };
+    println!("{:?}", &params);
+
+    let total_time = SystemTime::now();
+    let samples = 100;
+    let verbose = samples <= 1;
+    let seeds: Range<u64> = 0..samples;
+    let states: Vec<CraftState> = seeds.into_par_iter().map(|seed| run(&params, 0, seed, verbose)).collect();
+    let average_score: f64 = states.iter().map(|state| score(&params, state)).sum::<f64>() / samples as f64;
     let total_time_elapsed = total_time.elapsed().unwrap().as_secs_f64();
     println!("done.");
-    println!("{:?}", state);
+    println!("average score: {:.3}", average_score);
     println!("total time: {:.3}", total_time_elapsed);
 }
