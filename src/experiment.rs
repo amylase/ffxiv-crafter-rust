@@ -41,11 +41,19 @@ fn run(params: &CraftParameter, initial_quality: i64, seed: u64, verbose: bool) 
     return state;
 }
 
-fn score(params: &CraftParameter, state: &CraftState) -> f64 {
+fn quality_score(params: &CraftParameter, state: &CraftState) -> f64 {
     if state.result != CraftResult::SUCCESS {
         return 0.
     } else {
         return state.quality as f64 / params.item.max_quality as f64
+    }
+}
+
+fn max_quality_score(params: &CraftParameter, state: &CraftState) -> f64 {
+    if state.result != CraftResult::SUCCESS {
+        return 0.
+    } else {
+        return if state.quality == params.item.max_quality { 1. } else { 0. }
     }
 }
 
@@ -69,13 +77,15 @@ fn main() {
     println!("{:?}", &params);
 
     let total_time = SystemTime::now();
-    let samples = 100;
+    let samples = 8;
     let verbose = samples <= 1;
     let seeds: Range<u64> = 0..samples;
     let states: Vec<CraftState> = seeds.into_par_iter().map(|seed| run(&params, 0, seed, verbose)).collect();
-    let average_score: f64 = states.iter().map(|state| score(&params, state)).sum::<f64>() / samples as f64;
+    let average_quality: f64 = states.iter().map(|state| quality_score(&params, state)).sum::<f64>() / samples as f64;
+    let max_quality_ratio: f64 = states.iter().map(|state| max_quality_score(&params, state)).sum::<f64>() / samples as f64;
     let total_time_elapsed = total_time.elapsed().unwrap().as_secs_f64();
     println!("done.");
-    println!("average score: {:.3}", average_score);
+    println!("average quality: {:.3}", average_quality);
+    println!("max quality ratio: {:.3}", max_quality_ratio);
     println!("total time: {:.3}", total_time_elapsed);
 }

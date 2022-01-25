@@ -3,7 +3,7 @@ use std::time::SystemTime;
 
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
 use crate::action::{CraftAction, buff_turns, ProbabilisticResult, ProbabilisticState};
-use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, FocusedTouch, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, FocusedSynthesis, FinalAppraisal, WasteNot, WasteNotII, AdvancedTouch, TrainedFinesse};
+use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, FocusedTouch, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, FinalAppraisal, WasteNot, WasteNotII, AdvancedTouch, TrainedFinesse};
 
 #[derive(PartialOrd, PartialEq, Debug, Clone)]
 pub struct DFSResult {
@@ -52,7 +52,13 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
                     action = BasicSynthesis;
                 }
             } else if touch_playable {
-                if state.prev_action.is_some() && state.prev_action.unwrap() == BasicTouch {
+                if state.inner_quiet == 10 && state.cp < 24 + 32 + 18 + 18 && state.innovation == 0 {
+                    action = Innovation
+                } else if state.inner_quiet == 10 && state.cp < 24 + 32 + 18 && state.great_strides == 0 {
+                    action = GreatStrides
+                } else if state.inner_quiet == 10 && state.cp < 24 + 18 {
+                    action = ByregotBlessing
+                } else if state.prev_action.is_some() && state.prev_action.unwrap() == BasicTouch {
                     action = StandardTouch;
                 } else if state.prev_action.is_some() && state.prev_action.unwrap() == StandardTouch {
                     action = AdvancedTouch;
@@ -90,15 +96,13 @@ fn is_quality_action(action: &CraftAction) -> bool {
 }
 
 fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &CraftAction) -> bool {
-    if state.prev_action == Some(Observe) {
-        return *action == FocusedTouch || *action == FocusedSynthesis || *action == BasicSynthesis
-    }
     if is_quality_action(action) {
         return state.quality < params.item.max_quality
     }
     match action {
         FinalAppraisal => state.final_appraisal <= 0,
-        BasicTouch => state.prev_action != Some(BasicTouch),
+        BasicTouch => state.prev_action != Some(BasicTouch) && state.prev_action != Some(StandardTouch),
+        StandardTouch => state.prev_action != Some(StandardTouch),
         RapidSynthesis => RapidSynthesis.play(params, state).iter().all(|proba_state| proba_state.state.progress < params.item.max_progress),
         Veneration => buff_turns(state, 4) > state.veneration,
         Innovation => buff_turns(state, 4) > state.innovation,
@@ -116,7 +120,7 @@ pub fn adaptive_dfs(params: &CraftParameter, state: &CraftState) -> DFSResult {
         let time = SystemTime::now();
         let result = dfs(params, state, depth);
         let elapsed = time.elapsed().unwrap().as_secs_f64();
-        if elapsed >= 0.2 {
+        if elapsed >= 0.3 {
             return result;
         } 
     }
@@ -161,35 +165,40 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
         if !is_meaningful_action(params, state, &action) {
             continue
         }
+        let next_states = action.play(params, state);
+        let mut next_search_states: ProbabilisticResult;
+        if action != Observe {
+            let next_condition = if action == CraftAction::FinalAppraisal {
+                state.condition 
+            } else if state.condition == StatusCondition::EXCELLENT {
+                StatusCondition::POOR
+            } else {
+                StatusCondition::NORMAL 
+            };
+            let next_normal_states: Vec<&ProbabilisticState> = next_states.iter()
+                .filter(|proba_state| proba_state.state.condition == next_condition)
+                .filter(|proba_state| proba_state.state.result == CraftResult::ONGOING)
+                .collect();
+            let next_terminal_states: Vec<&ProbabilisticState> = next_states.iter()
+                .filter(|proba_state| proba_state.state.result != CraftResult::ONGOING)
+                .collect();
+            let terminal_proba: f64 = next_terminal_states.iter().map(|proba_state| proba_state.probability).sum();
+            let ongoing_proba = 1. - terminal_proba;
+            let normal_proba: f64 = next_normal_states.iter().map(|proba_state| proba_state.probability).sum();
+            next_search_states = next_normal_states.iter()
+                .map(|proba_state| ProbabilisticState { state: proba_state.state.clone(), probability: proba_state.probability * ongoing_proba / normal_proba })
+                .collect();
+            for next_terminal_state in next_terminal_states {
+                next_search_states.push(next_terminal_state.clone());
+            }
+        } else {
+            next_search_states = next_states.clone();
+        }
         let mut score = 0.;
         let mut upper_bound = 1.;
-        let next_condition = if action == CraftAction::FinalAppraisal {
-            state.condition 
-        } else if state.condition == StatusCondition::EXCELLENT {
-            StatusCondition::POOR
-        } else {
-            StatusCondition::NORMAL 
-        };
-        let next_states = action.play(params, state);
-        let next_normal_states: Vec<&ProbabilisticState> = next_states.iter()
-            .filter(|proba_state| proba_state.state.condition == next_condition)
-            .filter(|proba_state| proba_state.state.result == CraftResult::ONGOING)
-            .collect();
-        let next_terminal_states: Vec<&ProbabilisticState> = next_states.iter()
-            .filter(|proba_state| proba_state.state.result != CraftResult::ONGOING)
-            .collect();
-        let terminal_proba: f64 = next_terminal_states.iter().map(|proba_state| proba_state.probability).sum();
-        let ongoing_proba = 1. - terminal_proba;
-        let normal_proba: f64 = next_normal_states.iter().map(|proba_state| proba_state.probability).sum();
-        let mut next_states: ProbabilisticResult = next_normal_states.iter()
-            .map(|proba_state| ProbabilisticState { state: proba_state.state.clone(), probability: proba_state.probability * ongoing_proba / normal_proba })
-            .collect();
-        for next_terminal_state in next_terminal_states {
-            next_states.push(next_terminal_state.clone());
-        }
         let mut sub_results: Vec<DFSResult> = vec![];
-        for proba_state in next_states {
-            let next_depth = if action == CraftAction::FinalAppraisal || action == CraftAction::Observe { depth } else { depth - 1 };
+        for proba_state in next_search_states {
+            let next_depth =  depth - 1;
             let sub_result = _dfs(params, &proba_state.state, next_depth, memo);
             score += sub_result.best_score * proba_state.probability;
             upper_bound -= (1. - sub_result.best_score) * proba_state.probability;
