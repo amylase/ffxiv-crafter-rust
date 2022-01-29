@@ -1,7 +1,6 @@
 use core::panic;
 use std::collections::HashMap;
 use std::iter::FromIterator;
-use std::array::IntoIter;
 use crate::state::{CraftParameter, CraftState, StatusCondition, all_status_conditions};
 use lazy_static::lazy_static;
 
@@ -9,7 +8,7 @@ use lazy_static::lazy_static;
 // https://docs.google.com/spreadsheets/d/125HaSQnewXoDkjiOArtHNWEttwN-GEmipHyIW5Dbw90/edit#gid=247478737
 
 lazy_static! {
-    static ref LEVEL_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIter::new([
+    static ref LEVEL_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIterator::into_iter([
         (51, 120),
         (52, 125),
         (53, 130),
@@ -54,7 +53,7 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref PROGRESS_DIV_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIter::new([
+    static ref PROGRESS_DIV_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIterator::into_iter([
         (1, 50),
         (2, 50),
         (3, 50),
@@ -178,7 +177,7 @@ lazy_static! {
 }  
 
 lazy_static! {
-    static ref PROGRESS_MOD_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIter::new([
+    static ref PROGRESS_MOD_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIterator::into_iter([
         (1, 100),
         (2, 100),
         (3, 100),
@@ -301,7 +300,7 @@ lazy_static! {
 }  
 
 lazy_static! {
-    static ref QUALITY_DIV_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIter::new([
+    static ref QUALITY_DIV_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIterator::into_iter([
         (1, 30),
         (2, 30),
         (3, 30),
@@ -424,7 +423,7 @@ lazy_static! {
 }  
 
 lazy_static! {
-    static ref QUALITY_MOD_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIter::new([
+    static ref QUALITY_MOD_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIterator::into_iter([
         (1, 100),
         (2, 100),
         (3, 100),
@@ -571,7 +570,7 @@ pub fn quality_mod(recipe_level: i64) -> i64 {
 }
 
 lazy_static! {
-    static ref CONDITION_MASK_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIter::new([
+    static ref CONDITION_MASK_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIterator::into_iter([
         (1, 15),
         (2, 15),
         (3, 15),
@@ -761,12 +760,12 @@ fn expert_recipe_transition_probabilities(params: &CraftParameter) -> HashMap<St
 
 fn normal_recipe_transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
     if state.condition == StatusCondition::EXCELLENT {
-        return HashMap::<StatusCondition, f64>::from_iter(IntoIter::new([
+        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
             (StatusCondition::POOR, 1.),
         ]));
     }
     if state.condition == StatusCondition::GOOD || state.condition == StatusCondition::POOR {
-        return HashMap::<StatusCondition, f64>::from_iter(IntoIter::new([
+        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
             (StatusCondition::NORMAL, 1.),
         ]));
     }
@@ -774,7 +773,7 @@ fn normal_recipe_transition_probabilities(params: &CraftParameter, state: &Craft
         let good_proba = if params.player.job_level >= 63 { 0.25 } else { 0.2 };
         let excellent_proba = 0.04;
         let normal_proba = 1. - good_proba - excellent_proba;
-        return HashMap::<StatusCondition, f64>::from_iter(IntoIter::new([
+        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
             (StatusCondition::NORMAL, normal_proba),
             (StatusCondition::GOOD, good_proba),
             (StatusCondition::EXCELLENT, excellent_proba),

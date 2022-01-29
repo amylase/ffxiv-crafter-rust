@@ -17,7 +17,9 @@ pub fn terminal_score(params: &CraftParameter, state: &CraftState) -> f64 {
     if state.result != CraftResult::SUCCESS {
         0.
     } else {
-        (state.quality as f64) / (params.item.max_quality as f64)
+        let quality_ratio = (state.quality as f64) / (params.item.max_quality as f64);
+        let turns_bonus = (1. / (state.turn as f64 + 1.)) / (params.item.max_quality as f64);
+        return quality_ratio + turns_bonus;
     }
 }
 
