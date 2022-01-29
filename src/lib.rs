@@ -83,6 +83,7 @@ pub fn initial_state(params_str: &str, initial_quality: i64) -> String {
 mod test {
     use crate::action::CraftAction;
     use super::available_actions;
+    use super::search_best_move;
     use crate::CraftAction::*;
 
     #[test]
@@ -95,5 +96,13 @@ mod test {
         actual.sort();
         expected.sort();
         assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_search_best_move() {
+        let params_str = r#"{"player":{"job_level":80,"craftsmanship":2978,"control":2787,"max_cp":655},"item":{"recipe_level":516,"max_durability":55,"max_progress":5059,"max_quality":15474}}"#;
+        let state_str = r#"{"durability":55,"progress":0,"quality":0,"cp":655,"condition":"NORMAL","inner_quiet":0,"innovation":0,"veneration":0,"muscle_memory":0,"waste_not":0,"great_strides":0,"final_appraisal":0,"manipulation":0,"turn":1,"result":"ONGOING"}"#;
+        let actual_string = search_best_move(params_str, state_str);
+        println!("{}", actual_string)
     }
 }

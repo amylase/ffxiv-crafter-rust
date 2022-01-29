@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use std::time::SystemTime;
+
+use wasm_timer::Instant;
 
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
 use crate::action::{CraftAction, buff_turns, ProbabilisticResult, ProbabilisticState};
@@ -52,11 +53,11 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
                     action = BasicSynthesis;
                 }
             } else if touch_playable {
-                if state.inner_quiet == 10 && state.cp < 24 + 32 + 18 + 18 && state.innovation == 0 {
+                if state.inner_quiet == 10 && state.cp < 24 + 32 + 18 + 18 && state.innovation == 0 && state.cp >= 24 + 32 + 18 {
                     action = Innovation
-                } else if state.inner_quiet == 10 && state.cp < 24 + 32 + 18 && state.great_strides == 0 {
+                } else if state.inner_quiet == 10 && state.cp < 24 + 32 + 18 && state.great_strides == 0 && state.cp >= 24 + 32 {
                     action = GreatStrides
-                } else if state.inner_quiet == 10 && state.cp < 24 + 18 {
+                } else if state.inner_quiet == 10 && state.cp < 24 + 18 && state.cp >= 24 {
                     action = ByregotBlessing
                 } else if state.prev_action.is_some() && state.prev_action.unwrap() == BasicTouch {
                     action = StandardTouch;
@@ -117,9 +118,9 @@ fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &Cr
 pub fn adaptive_dfs(params: &CraftParameter, state: &CraftState) -> DFSResult {
     let max_depth = 10;
     for depth in 3..max_depth {
-        let time = SystemTime::now();
+        let time = Instant::now();
         let result = dfs(params, state, depth);
-        let elapsed = time.elapsed().unwrap().as_secs_f64();
+        let elapsed = time.elapsed().as_secs_f64();
         if elapsed >= 0.3 {
             return result;
         } 
