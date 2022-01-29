@@ -77,7 +77,7 @@ fn main() {
     println!("{:?}", &params);
 
     let total_time = SystemTime::now();
-    let samples = 8;
+    let samples = 100;
     let verbose = samples <= 1;
     let seeds: Range<u64> = 0..samples;
     let states: Vec<CraftState> = seeds.into_par_iter().map(|seed| run(&params, 0, seed, verbose)).collect();

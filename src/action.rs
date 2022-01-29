@@ -467,7 +467,7 @@ impl CraftAction {
         cost
     }
 
-    fn action_level(&self) -> i64 {
+    pub fn action_level(&self) -> i64 {
         match self {
             CraftAction::BasicSynthesis => 1,
             CraftAction::BasicTouch => 5,

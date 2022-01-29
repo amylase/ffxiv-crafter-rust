@@ -11,6 +11,10 @@ crate-type = ["cdylib", "rlib"]
 name = "experiment"
 path = "src/experiment.rs"
 
+[[bin]]
+name = "macro_experiment"
+path = "src/macro_experiment.rs"
+
 [features]
 default = ["console_error_panic_hook"]
 
