@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::ops::Add;
+use std::time::Duration;
 
 use wasm_timer::Instant;
 
@@ -115,27 +117,33 @@ fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &Cr
     }
 }
 
-pub fn adaptive_dfs(params: &CraftParameter, state: &CraftState) -> DFSResult {
+pub fn adaptive_dfs(params: &CraftParameter, state: &CraftState, time_budget_sec: f64) -> Result<DFSResult, String> {
     let max_depth = 10;
-    for depth in 3..max_depth {
-        let time = Instant::now();
-        let result = dfs(params, state, depth);
-        let elapsed = time.elapsed().as_secs_f64();
-        if elapsed >= 0.3 {
-            return result;
-        } 
+
+    let mut latest_result = Err("No dfs runs yet.".to_owned());
+    let time = Instant::now();
+    let time_limit = time.add(Duration::from_secs(time_budget_sec as u64));
+    for depth in 1..(max_depth + 1) {
+        let result = dfs(params, state, depth, time_limit);
+        if result.is_err() {
+            return latest_result;
+        }
+        latest_result = result;
     }
-    dfs(params, state, max_depth)
+    return latest_result;
 }
 
-pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult {
+pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64, time_limit: Instant) -> Result<DFSResult, String> {
     let mut memo: HashMap<CraftState, DFSResult> = HashMap::new();
-    _dfs(params, state, depth, &mut memo)
+    _dfs(params, state, depth, &mut memo, time_limit)
 }
 
-fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut HashMap<CraftState, DFSResult>) -> DFSResult {
+fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut HashMap<CraftState, DFSResult>, time_limit: Instant) -> Result<DFSResult, String> {
+    if Instant::now() > time_limit {
+        return Err("DFS timed out".to_owned());
+    }
     if memo.contains_key(state) {
-        return memo.get(state).unwrap().clone()
+        return Ok(memo.get(state).unwrap().clone())
     }
     if state.result != CraftResult::ONGOING {
         let result =  DFSResult {
@@ -143,7 +151,7 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
             best_action_path: vec![]
         };
         memo.insert(state.clone(), result.clone());
-        return result
+        return Ok(result)
     }
     if depth == 0 {
         let terminal_state = playout(params, state);
@@ -152,7 +160,7 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
             best_action_path: vec![]
         };
         memo.insert(state.clone(), result.clone());
-        return result
+        return Ok(result)
     }
     let is_completable_state = is_completable(params, state);
     let actions: Vec<CraftAction> = CraftAction::all_actions().into_iter()
@@ -200,7 +208,11 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
         let mut sub_results: Vec<DFSResult> = vec![];
         for proba_state in next_search_states {
             let next_depth =  depth - 1;
-            let sub_result = _dfs(params, &proba_state.state, next_depth, memo);
+            let dfs_result = _dfs(params, &proba_state.state, next_depth, memo, time_limit);
+            if !dfs_result.is_ok() {
+                return dfs_result;
+            }
+            let sub_result = dfs_result.unwrap();
             score += sub_result.best_score * proba_state.probability;
             upper_bound -= (1. - sub_result.best_score) * proba_state.probability;
             sub_results.push(sub_result);
@@ -221,5 +233,5 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
 
     let result = results.into_iter().filter(|dfs_result| dfs_result.best_score == best_score).next().unwrap();
     memo.insert(state.clone(), result.clone());
-    return result
+    return Ok(result)
 }

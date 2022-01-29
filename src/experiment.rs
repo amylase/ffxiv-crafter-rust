@@ -17,7 +17,7 @@ fn run(params: &CraftParameter, initial_quality: i64, seed: u64, verbose: bool) 
     while state.result == CraftResult::ONGOING {
         if verbose { println!("{:?}", state); }
         let time = SystemTime::now();
-        let dfs_result = search::adaptive_dfs(&params, &state);
+        let dfs_result = search::adaptive_dfs(&params, &state, 3.).unwrap();
         let elapsed_sec = time.elapsed().unwrap().as_secs_f64();
         if verbose {
             println!("{:?}, elapsed: {:.3}, score: {:.3} (predicted quality: {})", dfs_result.best_action_path, elapsed_sec, dfs_result.best_score, (dfs_result.best_score * params.item.max_quality as f64) as i64);
@@ -57,6 +57,14 @@ fn max_quality_score(params: &CraftParameter, state: &CraftState) -> f64 {
     }
 }
 
+fn turns_score(params: &CraftParameter, state: &CraftState) -> f64 {
+    if state.result != CraftResult::SUCCESS {
+        return 100.
+    } else {
+        return state.turn as f64;
+    }
+}
+
 fn main() {
     let player = PlayerParameter {
         job_level: 80,
@@ -77,15 +85,17 @@ fn main() {
     println!("{:?}", &params);
 
     let total_time = SystemTime::now();
-    let samples = 8;
+    let samples = 100;
     let verbose = samples <= 1;
     let seeds: Range<u64> = 0..samples;
     let states: Vec<CraftState> = seeds.into_par_iter().map(|seed| run(&params, 0, seed, verbose)).collect();
     let average_quality: f64 = states.iter().map(|state| quality_score(&params, state)).sum::<f64>() / samples as f64;
     let max_quality_ratio: f64 = states.iter().map(|state| max_quality_score(&params, state)).sum::<f64>() / samples as f64;
+    let average_turns: f64 = states.iter().map(|state| turns_score(&params, state)).sum::<f64>() / samples as f64;
     let total_time_elapsed = total_time.elapsed().unwrap().as_secs_f64();
     println!("done.");
     println!("average quality: {:.3}", average_quality);
     println!("max quality ratio: {:.3}", max_quality_ratio);
+    println!("average turns: {:.3}", average_turns);
     println!("total time: {:.3}", total_time_elapsed);
 }

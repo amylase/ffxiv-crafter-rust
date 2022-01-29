@@ -75,7 +75,7 @@ export function CrafterGame() {
 
     let aiAdvice;
     if (gameState === GameState.PLAYABLE && craftState.result === "ONGOING") {
-        aiAdvice = search_best_move(craftConfig.params, craftState);
+        aiAdvice = search_best_move(craftConfig.params, craftState, 3);
     };
 
     const action_buttons = craftActions.map((action) => {
