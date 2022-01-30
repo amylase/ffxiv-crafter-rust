@@ -3,6 +3,7 @@ mod state;
 mod factor;
 mod action;
 mod search;
+mod macroplan;
 
 pub use state::{
     CraftParameter,
@@ -19,6 +20,7 @@ pub use action::{
 };
 
 use crate::search::adaptive_dfs;
+use crate::macroplan::{plan, report};
 use std::str::FromStr;
 use wasm_bindgen::prelude::*;
 
@@ -77,6 +79,23 @@ pub fn initial_state(params_str: &str, initial_quality: i64) -> String {
     
     let state: CraftState = params.initial_state(initial_quality);
     serde_json::to_string(&state).unwrap().to_string()
+}
+
+#[wasm_bindgen]
+pub fn plan_macro(params_str: &str, initial_quality: i64, longer: bool) -> String {
+    let params: CraftParameter = serde_json::from_str(params_str).unwrap();
+    
+    let actions: Vec<CraftAction> = plan(&params, initial_quality, longer);
+    serde_json::to_string(&actions).unwrap().to_string()
+}
+
+#[wasm_bindgen]
+pub fn evaluate_macro(params_str: &str, actions_str: &str, initial_quality: i64) -> String {
+    let params: CraftParameter = serde_json::from_str(params_str).unwrap();
+    let actions: Vec<CraftAction> = serde_json::from_str(actions_str).unwrap();
+    
+    let metrics = report(&params, &actions, initial_quality, false);
+    serde_json::to_string(&metrics).unwrap().to_string()
 }
 
 #[cfg(test)]

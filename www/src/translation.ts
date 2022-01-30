@@ -282,6 +282,46 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     IsExpert: {
         en: "Expert Recipe",
         ja: "高難易度レシピ"
+    },
+    Macro: {
+        en: "Macro",
+        ja: "マクロ"
+    },
+    PlanMacroFaster: {
+        en: "Generate Macro (faster)",
+        ja: "マクロ作成 (高速)"
+    },
+    PlanMacroBetter: {
+        en: "Generate Macro (better)",
+        ja: "マクロ作成 (高性能)"
+    },
+    SuccessRate: {
+        en: "success rate",
+        ja: "製作成功確率",
+    },
+    MaxQualityRate: {
+        en: "max quality rate",
+        ja: "最高品質達成率",
+    },
+    AverageQuality: {
+        en: "average quality",
+        ja: "平均品質",
+    },
+    MacroLength: {
+        en: "macro length",
+        ja: "マクロの長さ",
+    },
+    InProgress: {
+        en: "In progress...",
+        ja: "計算中...",
+    },
+    OutputMacro: {
+        en: "Output",
+        ja: "生成結果"
+    },
+    MacroAnalysis: {
+        en: "Macro Quality",
+        ja: "マクロ評価"
     }
 };
 

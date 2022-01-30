@@ -5,6 +5,7 @@ import { CraftAction, craftActions, CraftConfiguration, CraftParameter, craftRes
 import { available_actions, search_best_move, play_action } from '../rustfuncs';
 import { translationProvider } from '../translation';
 import { GameStateView } from './GameStateView';
+import { MacroPlanner } from './MacroPlanner';
 import { NextStateSelector } from './NextStateSelector';
 import { ParameterEditor } from './ParameterEditor';
 
@@ -117,5 +118,6 @@ export function CrafterGame() {
         : null}
 
         <Button variant="danger" onClick={onResetButtonClick}>Reset</Button>
+        <MacroPlanner craftParameter={craftConfig.params} initialQuality={craftConfig.initialQuality} />
     </div>
 }
