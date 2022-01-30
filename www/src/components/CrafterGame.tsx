@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, ButtonGroup, Form } from 'react-bootstrap';
+import { Button, ButtonGroup, Form, Tab, Tabs } from 'react-bootstrap';
 import { useLanguage } from '../hooks/useLanguage';
 import { CraftAction, craftActions, CraftConfiguration, CraftParameter, craftResults, CraftState, initial_state, validateConfiguration } from '../models/gamestate';
 import { available_actions, search_best_move, play_action } from '../rustfuncs';
@@ -104,28 +104,47 @@ export function CrafterGame() {
             {t(action)}
         </Button>
     })
+    const button_chunks = [];
+    for (let i = 0; i < action_buttons.length; i += 6) {
+        button_chunks.push(action_buttons.slice(i, Math.min(i + 6, action_buttons.length)));
+    }
 
     return <div>
-        <ParameterEditor initialValue={craftConfig} onChange={onConfigChange}/>
-        <Button variant="primary" onClick={onStartButtonClick}>Start</Button>
-        <GameStateView params={craftConfig.params} state={craftState}/>
+        <div className="mt-3">
+            <ParameterEditor initialValue={craftConfig} onChange={onConfigChange}/>
+        </div>
+        <Tabs className="mt-3">
+            <Tab eventKey="advice" title={t("Advisor")}>
+                <div className="mt-3">
+                    <Button variant="primary" onClick={onStartButtonClick}>Start</Button>
+                    <GameStateView params={craftConfig.params} state={craftState}/>
 
-        {gameState === GameState.PLAYABLE ? 
-            <Form>
-                <Form.Group className={"mb-3"}>
-                    <ButtonGroup>
-                        {action_buttons}
-                    </ButtonGroup>
-                </Form.Group>
-                <Form.Group className={"mb-3"}>
-                    AI: {t(aiAdvice)}
-                </Form.Group>
-            </Form>
-        : gameState === GameState.SELECTING_NEXT_STATE ? 
-            <NextStateSelector options={nextStates} onChange={onNextStateSelected}/>
-        : null}
+                    {gameState === GameState.PLAYABLE ? 
+                        <Form>
+                            <Form.Group className={"mb-3"}>
+                                {button_chunks.map(chunk => {
+                                    return <div className="mt-1">
+                                        <ButtonGroup>
+                                            {chunk}
+                                        </ButtonGroup>
+                                    </div>
+                                })}
+                            </Form.Group>
+                            <Form.Group className={"mb-3"}>
+                                AI: {t(aiAdvice)}
+                            </Form.Group>
+                        </Form>
+                    : gameState === GameState.SELECTING_NEXT_STATE ? 
+                        <NextStateSelector options={nextStates} onChange={onNextStateSelected}/>
+                    : null}
 
-        <Button variant="danger" onClick={onResetButtonClick}>Reset</Button>
-        <MacroPlanner craftParameter={craftConfig.params} initialQuality={craftConfig.initialQuality} />
+                    <Button variant="danger" onClick={onResetButtonClick}>Reset</Button>
+                </div>
+            </Tab>
+            <Tab eventKey="macro" title={t("Macro")}>
+                <MacroPlanner craftParameter={craftConfig.params} initialQuality={craftConfig.initialQuality} />        
+            </Tab>
+        </Tabs>
+
     </div>
 }

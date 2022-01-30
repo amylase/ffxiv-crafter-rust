@@ -283,6 +283,10 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         en: "Expert Recipe",
         ja: "高難易度レシピ"
     },
+    Advisor: {
+        en: "Advisor",
+        ja: "アドバイザー"
+    },
     Macro: {
         en: "Macro",
         ja: "マクロ"

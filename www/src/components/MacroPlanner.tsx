@@ -74,8 +74,7 @@ export function MacroPlanner(props: Props) {
         }
     }
 
-    return <div className="mt-5">
-        <p>{t("Macro")}</p>
+    return <div className="mt-3">
         <Button variant="primary" onClick={onStartButtonClick(false)}>{t("PlanMacroFaster")}</Button>
         <Button className="ml-2" variant="secondary" onClick={onStartButtonClick(true)}>{t("PlanMacroBetter")}</Button>
 
