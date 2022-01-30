@@ -1,7 +1,8 @@
-use ffxiv_crafter_rust::{PlayerParameter, ItemParameter, CraftParameter};
+use crate::{macroplan::report, state::{PlayerParameter, ItemParameter, CraftParameter}};
 
-use crate::macroplan::report;
-
+mod factor;
+mod action;
+mod state;
 mod macroplan;
 
 fn main() {
