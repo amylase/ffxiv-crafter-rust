@@ -5,14 +5,13 @@ use rand::{thread_rng, Rng, prelude::SliceRandom};
 
 fn objective_function(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
     let progress_bonus = state.progress as f64 / params.item.max_progress as f64;
+    // todo: adjust.
     let quality_ratio = (state.quality as f64) / (params.item.max_quality as f64);
     let turns_bonus = 5. / (actions.len() as f64 + 1.);
     if state.result != CraftResult::SUCCESS {
         progress_bonus
-    } else if quality_ratio < 1. {
-        return progress_bonus + quality_ratio;
     } else {
-        return progress_bonus + quality_ratio + turns_bonus;
+        return progress_bonus + quality_ratio * turns_bonus;
     }
 }
 
@@ -59,6 +58,9 @@ fn evaluate(params: &CraftParameter, actions: &Vec<CraftAction>, samples: u64) -
 fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
     CraftAction::all_actions().into_iter()
         .filter(|action| params.player.job_level >= action.action_level())
+        .filter(|action| *action != CraftAction::TrickOfTheTrade)
+        .filter(|action| *action != CraftAction::PreciseTouch)
+        .filter(|action| *action != CraftAction::IntensiveSynthesis)
         .collect()
 }
 
@@ -101,7 +103,7 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction
 
 pub fn plan(params: &CraftParameter) -> Vec<CraftAction> {
     let evaluate_samples = 200;
-    let steps = 30000;
+    let steps = 50000;
     let start_temperature = 0.01;
     let end_temperature = 0.001;
 

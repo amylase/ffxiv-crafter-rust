@@ -6,16 +6,16 @@ mod macroplan;
 
 fn main() {
     let player = PlayerParameter {
-        job_level: 80,
-        craftsmanship: 2978,
-        control: 2787,
-        max_cp: 655
+        job_level: 90,
+        craftsmanship: 3290,
+        control: 3492,
+        max_cp: 640
     };
     let item = ItemParameter {
-        recipe_level: 418,
-        max_durability: 80,
-        max_progress: 1710,
-        max_quality: 4500,
+        recipe_level: 580,
+        max_durability: 70,
+        max_progress: 3900,
+        max_quality: 10920,
     };
     let params = CraftParameter {
         item,
