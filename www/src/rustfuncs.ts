@@ -19,3 +19,20 @@ export function available_actions(params: CraftParameter, state: CraftState): Cr
     const available_actions_str = wasm.available_actions(JSON.stringify(params), JSON.stringify(state));
     return JSON.parse(available_actions_str);
 }
+
+export function plan_macro(params: CraftParameter, initial_quality: number, longer: boolean): CraftAction[] {
+    const actions_str = wasm.plan_macro(JSON.stringify(params), BigInt(initial_quality), longer);
+    return JSON.parse(actions_str);
+}
+
+export function evaluate_macro(params: CraftParameter, actions: CraftAction[], initial_quality: number): MacroMetrics {
+    const metrics_str = wasm.evaluate_macro(JSON.stringify(params), JSON.stringify(actions), BigInt(initial_quality));
+    return JSON.parse(metrics_str);
+}
+
+type MacroMetrics = {
+    success_rate: number,
+    max_quality_rate: number,
+    average_quality: number,
+    macro_length: number,
+}
