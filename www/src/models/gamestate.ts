@@ -125,3 +125,34 @@ export function initial_state(config: CraftConfiguration): CraftState {
         result: "ONGOING",
     };
 }
+
+export function validateConfiguration(config: CraftConfiguration): boolean {
+    if (config.initialQuality < 0 || config.initialQuality > config.params.item.max_quality) {
+        return false;
+    }
+    if (config.params.player.job_level < 1 || config.params.player.job_level > 90) {
+        return false;
+    }
+    if (config.params.player.craftsmanship < 0) {
+        return false;
+    }
+    if (config.params.player.control < 0) {
+        return false;
+    }
+    if (config.params.player.max_cp < 0) {
+        return false;
+    }
+    if (config.params.item.recipe_level < 1) {
+        return false;
+    }
+    if (config.params.item.max_durability <= 0) {
+        return false;
+    }
+    if (config.params.item.max_progress <= 0) {
+        return false;
+    }
+    if (config.params.item.max_quality <= 0) {
+        return false;
+    }
+    return true;
+}

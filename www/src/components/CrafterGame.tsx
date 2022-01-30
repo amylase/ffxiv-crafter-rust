@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, ButtonGroup, Form } from 'react-bootstrap';
 import { useLanguage } from '../hooks/useLanguage';
-import { CraftAction, craftActions, CraftConfiguration, CraftParameter, craftResults, CraftState, initial_state } from '../models/gamestate';
+import { CraftAction, craftActions, CraftConfiguration, CraftParameter, craftResults, CraftState, initial_state, validateConfiguration } from '../models/gamestate';
 import { available_actions, search_best_move, play_action } from '../rustfuncs';
 import { translationProvider } from '../translation';
 import { GameStateView } from './GameStateView';
@@ -53,8 +53,12 @@ export function CrafterGame() {
         setGameState(GameState.CONFIGURING);
     }
     function onStartButtonClick() {
-        setCraftState(initial_state(craftConfig));
-        setGameState(GameState.PLAYABLE);
+        if (validateConfiguration(craftConfig)) {
+            setCraftState(initial_state(craftConfig));
+            setGameState(GameState.PLAYABLE);    
+        } else {
+            alert(t("InvalidParameters"))
+        }
     }
     function onActionButtonClickFactory(action: CraftAction) {
         return function() {
@@ -69,9 +73,13 @@ export function CrafterGame() {
         setNextStates(undefined);
     }
     function onResetButtonClick() {
-        setCraftState(initial_state(craftConfig));
-        setGameState(GameState.PLAYABLE);
-        setNextStates(undefined);
+        if (validateConfiguration(craftConfig)) {
+            setCraftState(initial_state(craftConfig));
+            setGameState(GameState.PLAYABLE);
+            setNextStates(undefined);
+        } else {
+            alert(t("InvalidParameters"))
+        }
     }
 
     let aiAdvice;
@@ -98,7 +106,7 @@ export function CrafterGame() {
     })
 
     return <div>
-        <ParameterEditor config={craftConfig} onChange={onConfigChange}/>
+        <ParameterEditor initialValue={craftConfig} onChange={onConfigChange}/>
         <Button variant="primary" onClick={onStartButtonClick}>Start</Button>
         <GameStateView params={craftConfig.params} state={craftState}/>
 

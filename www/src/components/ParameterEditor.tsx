@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Col, Form, Row } from "react-bootstrap";
 import { useLanguage } from "../hooks/useLanguage";
-import { CraftConfiguration, ItemParameter, PlayerParameter } from "../models/gamestate";
+import { CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter } from "../models/gamestate";
 import { translationProvider } from "../translation";
 
 const levelTable = {
@@ -122,37 +122,61 @@ const levelTable = {
 }
 
 interface Props {
-    config: CraftConfiguration
+    initialValue: CraftConfiguration
     onChange: (CraftConfiguration) => void;
 }
 
 export function ParameterEditor(props: Props) {
-    const { config, onChange } = props;
-    const [ language, setLanguage ] = useLanguage();
+    const {initialValue, onChange} = props;
+    const [language, setLanguage] = useLanguage();
+    const [crafterLevel, setCrafterLevel] = useState<string>(initialValue.params.player.job_level.toString());
+    const [craftsmanship, setCraftsmanship] = useState<string>(initialValue.params.player.craftsmanship.toString());
+    const [control, setControl] = useState<string>(initialValue.params.player.control.toString());
+    const [maxCP, setMaxCP] = useState<string>(initialValue.params.player.max_cp.toString());
+    const [recipeLevel, setRecipeLevel] = useState<number>(initialValue.params.item.recipe_level);
+    const [maxDurability, setMaxDurability] = useState<string>(initialValue.params.item.max_durability.toString());
+    const [maxProgress, setMaxProgress] = useState<string>(initialValue.params.item.max_progress.toString());
+    const [maxQuality, setMaxQuality] = useState<string>(initialValue.params.item.max_quality.toString());
+    const [initialQuality, setInitialQuality] = useState<string>(initialValue.initialQuality.toString());    
     const t = translationProvider(language); 
 
-    function onConfigChange(newConfig: CraftConfiguration) {
-        onChange(newConfig);
+    const currentValue: CraftConfiguration = {
+        params: {
+            player: {
+                job_level: parseInt(crafterLevel),
+                craftsmanship: parseInt(craftsmanship),
+                control: parseInt(control),
+                max_cp: parseInt(maxCP),
+            },
+            item: {
+                recipe_level: recipeLevel,
+                max_durability: parseInt(maxDurability),
+                max_progress: parseInt(maxProgress),
+                max_quality: parseInt(maxQuality),
+            },
+        },
+        initialQuality: parseInt(initialQuality)
     }
-    function onItemParameterChange(newItemParams: ItemParameter) {
-        const newParams = {
-            player: config.params.player,
-            item: newItemParams
+
+    function onConfigChange(updates: Partial<CraftConfiguration>) {
+        onChange({...currentValue, ...updates});
+    }
+    function onCraftParameterChange(updates: Partial<CraftParameter>) {
+        onConfigChange({params: {...currentValue.params, ...updates}});
+    }
+    function onItemParameterChange(updates: Partial<ItemParameter>) {
+        onCraftParameterChange({item: {...currentValue.params.item, ...updates}});
+    }
+    function onPlayerParameterChange(updates: Partial<PlayerParameter>) {
+        onCraftParameterChange({player: {...currentValue.params.player, ...updates}});
+    }
+    function parseIntThen(input: string, callback: (parsedInt: number) => any) {
+        const parsedNumber = parseInt(input);
+        console.log(input, parsedNumber);
+        if (Number.isInteger(parsedNumber)) {
+            console.log("!")
+            callback(parsedNumber);
         }
-        onConfigChange({...config, params: newParams});
-    }
-    function onPlayerParameterChange(newPlayerParams: PlayerParameter) {
-        const newParams = {
-            player: newPlayerParams,
-            item: config.params.item
-        }
-        onConfigChange({...config, params: newParams});
-    }
-    function onRecipeLevelChange(newRecipeLevel: number) {
-        onItemParameterChange({
-            ...config.params.item,
-            recipe_level: newRecipeLevel,
-        })
     }
     const recipeLevels = Object.keys(levelTable);
     recipeLevels.sort((a, b) => levelTable[a] - levelTable[b]);
@@ -161,45 +185,45 @@ export function ParameterEditor(props: Props) {
         <Row>
             <Form.Group as={Col}>
                 <Form.Label>{t("ClassLevel")}</Form.Label>
-                <Form.Control value={config.params.player.job_level} onChange={(e) => onPlayerParameterChange({...config.params.player, job_level: parseInt(e.target.value)})}/>
+                <Form.Control value={crafterLevel} onChange={(e) => {setCrafterLevel(e.target.value); parseIntThen(e.target.value, (num) => onPlayerParameterChange({job_level: num}))}}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("Craftsmanship")}</Form.Label>
-                <Form.Control value={config.params.player.craftsmanship} onChange={(e) => onPlayerParameterChange({...config.params.player, craftsmanship: parseInt(e.target.value)})}/>
+                <Form.Control value={craftsmanship} onChange={(e) => {setCraftsmanship(e.target.value); parseIntThen(e.target.value, (num) => onPlayerParameterChange({craftsmanship: num}))}}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("Control")}</Form.Label>
-                <Form.Control value={config.params.player.control} onChange={(e) => onPlayerParameterChange({...config.params.player, control: parseInt(e.target.value)})}/>
+                <Form.Control value={control} onChange={(e) => {setControl(e.target.value); parseIntThen(e.target.value, (num) => onPlayerParameterChange({control: num}))}}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("MaxCP")}</Form.Label>
-                <Form.Control value={config.params.player.max_cp} onChange={(e) => onPlayerParameterChange({...config.params.player, max_cp: parseInt(e.target.value)})}/>
+                <Form.Control value={maxCP} onChange={(e) => {setMaxCP(e.target.value); parseIntThen(e.target.value, (num) => onPlayerParameterChange({max_cp: num}))}}/>
             </Form.Group>
         </Row>
         <Row>
             <Form.Group as={Col}>
                 <Form.Label>{t("RecipeLevel")}</Form.Label>
-                <Form.Control as={"select"} onChange={(e) => onRecipeLevelChange(parseInt(e.target.value))}>
-                    {recipeLevels.map((recipeLevel) => {
-                        return <option key={recipeLevel} value={levelTable[recipeLevel]} selected={levelTable[recipeLevel] === config.params.item.recipe_level}>{recipeLevel}</option>
+                <Form.Control as={"select"} onChange={(e) => {const num = parseInt(e.target.value); setRecipeLevel(num); onItemParameterChange({recipe_level: num})}}>
+                    {recipeLevels.map((rLevel) => {
+                        return <option key={rLevel} value={levelTable[rLevel]} selected={levelTable[rLevel] === recipeLevel}>{rLevel}</option>
                     })}
                 </Form.Control>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("MaxDurability")}</Form.Label>
-                <Form.Control value={config.params.item.max_durability} onChange={(e) => onItemParameterChange({...config.params.item, max_durability: parseInt(e.target.value)})}/>
+                <Form.Control value={maxDurability} onChange={(e) => {setMaxDurability(e.target.value); parseIntThen(e.target.value, (num) => onItemParameterChange({max_durability: num}))}}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("MaxProgress")}</Form.Label>
-                <Form.Control value={config.params.item.max_progress} onChange={(e) => onItemParameterChange({...config.params.item, max_progress: parseInt(e.target.value)})}/>
+                <Form.Control value={maxProgress} onChange={(e) => {setMaxProgress(e.target.value); parseIntThen(e.target.value, (num) => onItemParameterChange({max_progress: num}))}}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("MaxQuality")}</Form.Label>
-                <Form.Control value={config.params.item.max_quality} onChange={(e) => onItemParameterChange({...config.params.item, max_quality: parseInt(e.target.value)})}/>
+                <Form.Control value={maxQuality} onChange={(e) => {setMaxQuality(e.target.value); parseIntThen(e.target.value, (num) => onItemParameterChange({max_quality: num}))}}/>
             </Form.Group>
             <Form.Group as={Col}>
                 <Form.Label>{t("InitialQuality")}</Form.Label>
-                <Form.Control value={config.initialQuality} onChange={(e) => onConfigChange({...config, initialQuality: parseInt(e.target.value)})}/>
+                <Form.Control value={initialQuality} onChange={(e) => {setInitialQuality(e.target.value); parseIntThen(e.target.value, (num) => onConfigChange({initialQuality: num}))}}/>
             </Form.Group>
         </Row>
     </Form>

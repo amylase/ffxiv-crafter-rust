@@ -322,6 +322,10 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     MacroAnalysis: {
         en: "Macro Quality",
         ja: "マクロ評価"
+    },
+    InvalidParameters: {
+        en: "Invalid Parameters",
+        ja: "パラメータの値が正しくありません"
     }
 };
 

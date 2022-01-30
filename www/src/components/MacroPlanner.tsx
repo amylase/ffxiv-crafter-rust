@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useLanguage } from '../hooks/useLanguage';
-import { CraftAction, CraftParameter } from '../models/gamestate';
+import { CraftAction, CraftParameter, validateConfiguration } from '../models/gamestate';
 import { evaluate_macro, plan_macro } from '../rustfuncs';
 import { translationProvider } from '../translation';
 
@@ -26,12 +26,21 @@ function actionTime(action: CraftAction): number {
     return twoSecondActions.find(twoSecondAction => action === twoSecondAction) !== undefined ? 2 : 3;
 }
 
+function exportActionName(action: CraftAction, t: ReturnType<typeof translationProvider>) {
+    const actionName = t(action);
+    if (actionName.indexOf(' ') >= 0) {
+        return `"${actionName}"`;
+    } else {
+        return actionName;
+    }
+}
+
 function exportMacro(actions: CraftAction[], t: ReturnType<typeof translationProvider>): string {
     const macroSize = 15;
     const macros: string[] = [];
     for (let i = 0; i < actions.length; i += 15) {
         const chunk = actions.slice(i, Math.min(i + 15, actions.length));
-        const macro = chunk.map(action => `/action ${t(action)} <wait.${actionTime(action)}>`).join('\n');
+        const macro = chunk.map(action => `/action ${exportActionName(action, t)} <wait.${actionTime(action)}>`).join('\n');
         macros.push(macro);
     }
     return macros.join('\n\n');
@@ -47,6 +56,10 @@ export function MacroPlanner(props: Props) {
     
     function onStartButtonClick(longer: boolean) {
         return function() {
+            if (!validateConfiguration({params: craftParameter, initialQuality})) {
+                alert(t("InvalidParameters"));
+                return;
+            }
             setMacro(t("InProgress"));
             const macro = plan_macro(craftParameter, initialQuality, longer);
             setMacro(exportMacro(macro, t));
