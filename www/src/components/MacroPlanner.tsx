@@ -31,7 +31,7 @@ function exportMacro(actions: CraftAction[], t: ReturnType<typeof translationPro
     const macros: string[] = [];
     for (let i = 0; i < actions.length; i += 15) {
         const chunk = actions.slice(i, Math.min(i + 15, actions.length));
-        const macro = actions.map(action => `/action ${t(action)} <wait.${actionTime(action)}>`).join('\n');
+        const macro = chunk.map(action => `/action ${t(action)} <wait.${actionTime(action)}>`).join('\n');
         macros.push(macro);
     }
     return macros.join('\n\n');
