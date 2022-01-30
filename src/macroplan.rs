@@ -1,3 +1,4 @@
+use std::mem::swap;
 use std::{ops::Range};
 
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
@@ -20,7 +21,7 @@ fn hq_chance(quality_ratio: f64) -> f64 {
 } 
 
 // optimizing expected HQ items per time
-fn objective_function(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
+fn annealing_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
     let progress_bonus = state.progress as f64 / params.item.max_progress as f64;
     let quality_ratio = (state.quality as f64) / (params.item.max_quality as f64);
     let turns_bonus = 10. / (actions.len() as f64 + 1.);
@@ -28,6 +29,20 @@ fn objective_function(params: &CraftParameter, state: &CraftState, actions: &Vec
         progress_bonus
     } else {
         return progress_bonus + hq_chance(quality_ratio) * turns_bonus;
+    }
+}
+
+fn actual_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
+    let progress_bonus = state.progress as f64 / params.item.max_progress as f64;
+    let quality = state.quality.min(params.item.max_quality);
+    let quality_ratio = (quality as f64) / (params.item.max_quality as f64);
+    let turns_bonus = 10. / (actions.len() as f64 + 1.);
+    if state.result != CraftResult::SUCCESS {
+        progress_bonus
+    } else if quality < params.item.max_quality {
+        return progress_bonus + quality_ratio;
+    } else {
+        return progress_bonus + quality_ratio + turns_bonus;
     }
 }
 
@@ -65,15 +80,6 @@ pub fn run_macro(params: &CraftParameter, actions: &Vec<CraftAction>, initial_qu
     state
 }
 
-fn evaluate(params: &CraftParameter, actions: &Vec<CraftAction>, samples: u64) -> f64 {
-    let mut sum_score: f64 = 0.;
-    for _ in 0..samples {
-        let state = run_macro(params, actions, 0, samples == 1);
-        sum_score += objective_function(params, &state, actions)
-    }
-    return sum_score / samples as f64;
-}
-
 fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
     CraftAction::all_actions().into_iter()
         .filter(|action| params.player.job_level >= action.action_level())
@@ -90,7 +96,7 @@ fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
 fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
     let mut rng = thread_rng();
     let choice: f64 = rng.gen();
-    if choice < 0.1 || actions.is_empty() {
+    if actions.len() <= 60 && (choice < 0.1 || actions.is_empty()) {
         // add
         let position = rng.gen_range(0..(actions.len() + 1));
         let new_action = *available_actions(params).choose(&mut rng).unwrap();
@@ -110,6 +116,25 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction
         new_actions.extend_from_slice(&actions[(position + 1)..]);
 
         return new_actions;
+    } else if actions.len() >= 2 && choice < 0.25 {
+        // swap
+        let mut position1 = rng.gen_range(0..(actions.len() - 1));
+        let mut position2 = rng.gen_range(0..(actions.len() - 1));
+        if position1 > position2 {
+            swap(&mut position1, &mut position2)
+        }
+        if position1 == position2 {
+            // todo: avoid duplicate
+            return actions.clone();
+        }
+        let mut new_actions = vec![];
+        new_actions.extend_from_slice(&actions[..position1]);
+        new_actions.push(actions[position2]);
+        new_actions.extend_from_slice(&actions[(position1 + 1)..position2]);
+        new_actions.push(actions[position1]);
+        new_actions.extend_from_slice(&actions[(position2 + 1)..]);
+
+        return new_actions;
     } else {
         // replace
         let position = rng.gen_range(0..actions.len());
@@ -125,16 +150,16 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction
 }
 
 pub fn plan(params: &CraftParameter) -> Vec<CraftAction> {
-    let evaluate_samples = 1;
     let steps = 5000000;
     let start_temperature = 0.01;
     let end_temperature = 0.0001;
 
     let mut actions: Vec<CraftAction> = vec![];
-    let mut score = evaluate(params, &actions, evaluate_samples);
+    let init_state = run_macro(params, &actions, 0, true);
+    let mut score = annealing_objective(params, &init_state, &actions);
     let mut rng = thread_rng();
     let mut best_actions = actions.clone();
-    let mut best_score = score;
+    let mut best_score = actual_objective(params, &init_state, &actions);
     for step in 0..steps {
         let temperature = start_temperature + (end_temperature - start_temperature) * step as f64 / steps as f64;
         if step % 50000 == 0 {
@@ -143,13 +168,15 @@ pub fn plan(params: &CraftParameter) -> Vec<CraftAction> {
             println!("");
         }
         let new_actions = tweak(params, &actions);
-        let new_score = evaluate(params, &new_actions, evaluate_samples);
+        let state = run_macro(params, &new_actions, 0, true);
+        let new_score = annealing_objective(params, &state, &new_actions);
+        let new_actual_score = actual_objective(params, &state, &new_actions);
         if new_score > score || rng.gen::<f64>() < ((new_score - score) / temperature).exp() {
             score = new_score;
             actions = new_actions;
         }
-        if new_score > best_score{
-            best_score = score;
+        if new_actual_score > best_score {
+            best_score = new_actual_score;
             best_actions = actions.clone();
         }
     }
@@ -165,6 +192,7 @@ pub fn report(params: &CraftParameter, actions: &Vec<CraftAction>) {
     println!("success rate: {:.3}", success_rate);
     println!("average quality: {:.3}", average_quality);
     println!("macro length: {}", actions.len());
+    // println!("{:?}", actions)
 }
 
 fn quality_score(params: &CraftParameter, state: &CraftState) -> f64 {

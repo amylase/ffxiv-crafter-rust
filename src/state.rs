@@ -38,7 +38,7 @@ pub enum CraftResult {
     SUCCESS,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PlayerParameter {
     pub job_level: i64,
     pub craftsmanship: i64,
@@ -46,7 +46,7 @@ pub struct PlayerParameter {
     pub max_cp: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ItemParameter {
     pub recipe_level: i64,
     pub max_durability: i64,
@@ -54,7 +54,7 @@ pub struct ItemParameter {
     pub max_quality: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct CraftParameter {
     pub player: PlayerParameter,
     pub item: ItemParameter,
