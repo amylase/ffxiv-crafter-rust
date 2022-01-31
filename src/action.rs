@@ -112,7 +112,7 @@ fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_effici
     let crafting_level = crafting_level(params.player.job_level);
     let recipe_level = params.item.recipe_level;
     let p1 = params.player.craftsmanship as f64 * 10. / progress_div(recipe_level) as f64 + 2.;
-    let penalty = if crafting_level < recipe_level { progress_mod(recipe_level) as f64 / 100. } else { 1. };
+    let penalty = if crafting_level <= recipe_level { progress_mod(recipe_level) as f64 / 100. } else { 1. };
     let p2 = p1 * penalty;
     let condition = if state.condition == StatusCondition::MALLEABLE { 1.5 } else { 1. };
     let mut buffs = 1.;
@@ -133,7 +133,7 @@ fn produce_quality(params: &CraftParameter, state: &mut CraftState, base_efficie
     let crafting_level = crafting_level(params.player.job_level);
     let recipe_level = params.item.recipe_level;
     let q1 = params.player.control as f64 * 10. / quality_div(recipe_level) as f64 + 35.;
-    let penalty = if crafting_level < recipe_level { quality_mod(recipe_level) as f64 / 100. } else { 1. };
+    let penalty = if crafting_level <= recipe_level { quality_mod(recipe_level) as f64 / 100. } else { 1. };
     let q2 = q1 * penalty;
     let condition = if state.condition == StatusCondition::POOR {
         0.5
