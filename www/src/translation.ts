@@ -38,7 +38,7 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         ja: "加工"
     },
     MastersMend: {
-        en: "Masters Mend",
+        en: "Master's Mend",
         ja: "マスターズメンド"
     },
     InnerQuiet: {
@@ -62,7 +62,7 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         ja: "経過観察"
     },
     ByregotBlessing: {
-        en: "Byregot Blessing",
+        en: "Byregot's Blessing",
         ja: "ビエルゴの祝福"
     },
     PreparatoryTouch: {

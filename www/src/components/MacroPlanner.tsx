@@ -12,7 +12,6 @@ type Props = {
 
 function actionTime(action: CraftAction): number {
     const twoSecondActions = [
-        "MastersMend",
         "Observe",
         "TrickOfTheTrade",
         "Innovation",
