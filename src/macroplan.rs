@@ -174,7 +174,43 @@ pub fn plan(params: &CraftParameter, initial_quality: i64, longer: bool) -> Vec<
             best_actions = new_actions.clone();
         }
     }
-    return best_actions;
+    return post_process(params, &best_actions);
+}
+
+fn post_process(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
+    return remove_unusable_actions(params, actions);
+}
+
+fn remove_unusable_actions(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
+    let mut state = params.initial_state(0);
+    let mut rng = thread_rng();
+
+    let mut used_actions = vec![];
+    for turn in 0..actions.len() {
+        if state.result != CraftResult::ONGOING {
+            break;
+        }
+        let next_action = actions[turn];
+        if !next_action.is_playable(params, &state) {
+            continue;
+        }
+        let next_states = next_action.play(&params, &state);
+
+        let choice: f64 = rng.gen();
+        let mut accumulate: f64 = 0.;
+        let mut next_state = None;
+        for proba_state in next_states {
+            accumulate += proba_state.probability;
+            if choice <= accumulate {
+                next_state = Some(proba_state.state);
+                break;
+            }
+        }
+        state = next_state.unwrap();
+        state.condition = StatusCondition::NORMAL;
+        used_actions.push(next_action);
+    }
+    return used_actions;
 }
 
 #[derive(Serialize)]
@@ -190,7 +226,7 @@ pub fn report(params: &CraftParameter, actions: &Vec<CraftAction>, initial_quali
     let annealing = annealing_objective(params, &state, &actions);
     let actual = actual_objective(params, &state, &actions);
 
-        let samples = 1000;
+    let samples = 1000;
     let seeds: Range<u64> = 0..samples;
     let states: Vec<CraftState> = seeds.into_iter().map(|_seed| run_macro(&params, &actions, initial_quality, false)).collect();
     let success_rate: f64 = states.iter().map(|state| success_score(&params, state)).sum::<f64>() / samples as f64;
