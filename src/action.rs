@@ -58,6 +58,8 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
 
     let mut state = state.clone();
     state.clip(params);
+    state.advanced_touch_ready = state.standard_touch_ready && state.prev_action == Some(CraftAction::StandardTouch);
+    state.standard_touch_ready = state.prev_action == Some(CraftAction::BasicTouch);
 
     if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::FinalAppraisal {
         return deterministic(state);
@@ -397,7 +399,7 @@ impl CraftAction {
             CraftAction::Veneration => 18,
             CraftAction::MuscleMemory => 6,
             CraftAction::FocusedSynthesis => 5,
-            CraftAction::StandardTouch => if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::BasicTouch { 18 } else { 32 },
+            CraftAction::StandardTouch => if state.standard_touch_ready { 18 } else { 32 },
             CraftAction::FocusedTouch => 18,
             CraftAction::Reflect => 6,
             CraftAction::WasteNot => 56,
@@ -406,7 +408,7 @@ impl CraftAction {
             CraftAction::GreatStrides => 32,
             CraftAction::FinalAppraisal => 1,
             CraftAction::Manipulation => 96,
-            CraftAction::AdvancedTouch => if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::StandardTouch { 18 } else { 46 },
+            CraftAction::AdvancedTouch => if state.advanced_touch_ready { 18 } else { 46 },
             CraftAction::PrudentSynthesis => 18,
             CraftAction::TrainedFinesse => 32,
         }

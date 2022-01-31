@@ -76,6 +76,8 @@ pub struct CraftState {
     pub great_strides: i64,
     pub final_appraisal: i64,
     pub manipulation: i64,
+    pub standard_touch_ready: bool,
+    pub advanced_touch_ready: bool,
     pub turn: i64,
 
     pub prev_action: Option<CraftAction>,
@@ -117,6 +119,8 @@ impl CraftParameter {
             great_strides: 0,
             final_appraisal: 0,
             manipulation: 0,
+            standard_touch_ready: false,
+            advanced_touch_ready: false,
             turn: 0,
             prev_action: None,
             result: CraftResult::ONGOING

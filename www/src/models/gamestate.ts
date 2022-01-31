@@ -92,6 +92,8 @@ export interface CraftState {
     great_strides: number,
     final_appraisal: number,
     manipulation: number,
+    standard_touch_ready: boolean,
+    advanced_touch_ready: boolean,
     turn: number,
 
     prev_action?: CraftAction,
@@ -120,6 +122,8 @@ export function initial_state(config: CraftConfiguration): CraftState {
         great_strides: 0,
         final_appraisal: 0,
         manipulation: 0,
+        standard_touch_ready: false,
+        advanced_touch_ready: false,
         turn: 1,
 
         result: "ONGOING",
