@@ -143,7 +143,10 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction
     return new_actions;
 }
 
-pub fn plan(params: &CraftParameter, initial_quality: i64, longer: bool) -> Vec<CraftAction> {
+pub fn plan(orig_params: &CraftParameter, initial_quality: i64, longer: bool) -> Vec<CraftAction> {
+    let mut params = &mut orig_params.clone();
+    params.item.max_quality *= 11;
+    params.item.max_quality /= 10;
     let steps = if longer { 5_000_000 } else { 1_000_000 };
     let start_temperature = 0.01;
     let end_temperature = 0.0001;
@@ -178,7 +181,9 @@ pub fn plan(params: &CraftParameter, initial_quality: i64, longer: bool) -> Vec<
 }
 
 fn post_process(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
-    return remove_unusable_actions(params, actions);
+    let mut actions = actions.clone();
+    actions = remove_unusable_actions(params, &actions);
+    return actions;
 }
 
 fn remove_unusable_actions(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
