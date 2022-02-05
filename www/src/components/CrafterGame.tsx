@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button, ButtonGroup, Form, Tab, Tabs } from 'react-bootstrap';
+import { useCraftConfiguration } from '../hooks/useCraftConfiguration';
 import { useLanguage } from '../hooks/useLanguage';
 import { CraftAction, craftActions, CraftConfiguration, CraftParameter, craftResults, CraftState, initial_state, validateConfiguration } from '../models/gamestate';
 import { available_actions, search_best_move, play_action } from '../rustfuncs';
@@ -16,31 +17,8 @@ enum GameState {
     SELECTING_NEXT_STATE,
 }
 
-function getInitialConfig(): CraftConfiguration {
-    const itemParams = {
-        recipe_level: 516,
-        max_durability: 55,
-        max_progress: 5059,
-        max_quality: 15474,
-    };
-    const playerParams = {
-        job_level: 80,
-        craftsmanship: 2978,
-        control: 2787,
-        max_cp: 655,
-    };
-    const craftParameter = {
-        player: playerParams,
-        item: itemParams,
-    };
-    return {
-        params: craftParameter,
-        initialQuality: 0
-    }
-}
-
 export function CrafterGame() {
-    const [ craftConfig, setCraftConfig ] = useState<CraftConfiguration>(getInitialConfig());
+    const [ craftConfig, setCraftConfig ] = useCraftConfiguration();
     const [ craftState, setCraftState ] = useState<CraftState>(initial_state(craftConfig));
     const [ gameState, setGameState ] = useState<GameState>(GameState.CONFIGURING);
     const [ nextStates, setNextStates] = useState<CraftState[]>(undefined);
