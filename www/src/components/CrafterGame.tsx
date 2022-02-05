@@ -18,7 +18,8 @@ enum GameState {
 }
 
 export function CrafterGame() {
-    const [ craftConfig, setCraftConfig ] = useCraftConfiguration();
+    const { getCraftConfig, setCraftConfig } = useCraftConfiguration();
+    const craftConfig = getCraftConfig();
     const [ craftState, setCraftState ] = useState<CraftState>(initial_state(craftConfig));
     const [ gameState, setGameState ] = useState<GameState>(GameState.CONFIGURING);
     const [ nextStates, setNextStates] = useState<CraftState[]>(undefined);
@@ -120,7 +121,7 @@ export function CrafterGame() {
                 </div>
             </Tab>
             <Tab eventKey="macro" title={t("Macro")}>
-                <MacroPlanner craftParameter={craftConfig.params} initialQuality={craftConfig.initialQuality} />        
+                <MacroPlanner />        
             </Tab>
         </Tabs>
 

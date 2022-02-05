@@ -320,8 +320,8 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         ja: "計算中...",
     },
     OutputMacro: {
-        en: "Output",
-        ja: "生成結果"
+        en: "Macro",
+        ja: "マクロ"
     },
     MacroAnalysis: {
         en: "Macro Quality",
@@ -330,7 +330,7 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     InvalidParameters: {
         en: "Invalid Parameters",
         ja: "パラメータの値が正しくありません"
-    }
+    },
 };
 
 export function translationProvider(language: string): (string) => string {

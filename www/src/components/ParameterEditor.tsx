@@ -172,9 +172,7 @@ export function ParameterEditor(props: Props) {
     }
     function parseIntThen(input: string, callback: (parsedInt: number) => any) {
         const parsedNumber = parseInt(input);
-        console.log(input, parsedNumber);
         if (Number.isInteger(parsedNumber)) {
-            console.log("!")
             callback(parsedNumber);
         }
     }
