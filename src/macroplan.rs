@@ -23,14 +23,15 @@ fn hq_chance(quality_ratio: f64) -> f64 {
 
 // optimizing expected HQ items per time
 fn annealing_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
-    let progress_bonus = state.progress as f64 / params.item.max_progress as f64;
-    let quality_ratio = (state.quality as f64) / (params.item.max_quality as f64);
-    let turns_bonus = 10. / (actions.len() as f64 + 1.);
-    if state.result != CraftResult::SUCCESS {
-        progress_bonus
-    } else {
-        return progress_bonus + hq_chance(quality_ratio) * turns_bonus;
-    }
+    actual_objective(params, state, actions)
+    // let progress_bonus = state.progress as f64 / params.item.max_progress as f64;
+    // let quality_ratio = (state.quality as f64) / (params.item.max_quality as f64);
+    // let turns_bonus = 10. / (actions.len() as f64 + 1.);
+    // if state.result != CraftResult::SUCCESS {
+    //     progress_bonus
+    // } else {
+    //     return progress_bonus + hq_chance(quality_ratio) * turns_bonus;
+    // }
 }
 
 fn actual_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {

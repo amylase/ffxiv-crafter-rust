@@ -7,25 +7,26 @@ mod macroplan;
 
 fn main() {
     let player = PlayerParameter {
-        job_level: 80,
-        craftsmanship: 2978,
-        control: 2787,
-        max_cp: 655
+        job_level: 90,
+        craftsmanship: 3252,
+        control: 3174,
+        max_cp: 577
     };
     let item = ItemParameter {
-        recipe_level: 418   ,
-        max_durability: 80,
-        max_progress: 1710,
-        max_quality: 4500,
+        recipe_level: 580,
+        max_durability: 70,
+        max_progress: 3900,
+        max_quality: 10920,
     };
+    let initial_quality = 5460;
     let params = CraftParameter {
         item,
         player
     };
     println!("{:?}", &params);
-    let result = macroplan::plan(&params, 0, false);
+    let result = macroplan::plan(&params, initial_quality, false);
     println!("done.");
     println!("{:?}", result);
  
-    report(&params, &result, 0, true);
+    report(&params, &result, initial_quality, true);
 }
