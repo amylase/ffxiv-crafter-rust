@@ -3,7 +3,8 @@ import { Button, Form } from 'react-bootstrap';
 import { useCraftConfiguration } from '../hooks/useCraftConfiguration';
 import { useLanguage } from '../hooks/useLanguage';
 import { CraftAction, craftActions, validateConfiguration } from '../models/gamestate';
-import { evaluate_macro, plan_macro } from '../rustfuncs';
+import { plan_macro } from '../rust/caller';
+import { evaluate_macro } from '../rust/rustfuncs';
 import { supportedLanguages, translationProvider } from '../translation';
 
 function actionTime(action: CraftAction): number {
@@ -116,8 +117,14 @@ export function MacroPlanner() {
                 return;
             }
             setMacro(t("InProgress"));
-            const macro = plan_macro(craftParameter, initialQuality, longer);
-            updateMacro(exportMacro(macro, t))
+
+            plan_macro(craftParameter, initialQuality, longer)
+                .then(macro => {
+                    updateMacro(exportMacro(macro, t))
+                })
+                .catch(err => {
+                    setMacro(err);
+                })
         }
     }
 

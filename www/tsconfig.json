@@ -3,6 +3,8 @@
       "outDir": "./built",
       "allowJs": true,
       "esModuleInterop": true,
+      "module": "esnext",
+      "moduleResolution": "node",
       "target": "es5",
       "jsx": "react-jsx"
     },

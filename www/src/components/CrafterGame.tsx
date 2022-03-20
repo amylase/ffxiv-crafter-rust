@@ -3,7 +3,7 @@ import { Button, ButtonGroup, Form, Tab, Tabs } from 'react-bootstrap';
 import { useCraftConfiguration } from '../hooks/useCraftConfiguration';
 import { useLanguage } from '../hooks/useLanguage';
 import { CraftAction, craftActions, CraftConfiguration, CraftParameter, craftResults, CraftState, initial_state, validateConfiguration } from '../models/gamestate';
-import { available_actions, search_best_move, play_action } from '../rustfuncs';
+import { available_actions, search_best_move, play_action } from '../rust/rustfuncs';
 import { translationProvider } from '../translation';
 import { GameStateView } from './GameStateView';
 import { MacroPlanner } from './MacroPlanner';
