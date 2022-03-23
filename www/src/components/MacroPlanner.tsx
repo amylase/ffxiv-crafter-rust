@@ -3,7 +3,8 @@ import { Button, Form } from 'react-bootstrap';
 import { useCraftConfiguration } from '../hooks/useCraftConfiguration';
 import { useLanguage } from '../hooks/useLanguage';
 import { CraftAction, craftActions, validateConfiguration } from '../models/gamestate';
-import { evaluate_macro, plan_macro } from '../rustfuncs';
+import { plan_macro } from '../rust/caller';
+import { evaluate_macro } from '../rust/rustfuncs';
 import { supportedLanguages, translationProvider } from '../translation';
 
 function actionTime(action: CraftAction): number {
@@ -84,6 +85,7 @@ function parseMacro(macro: String): CraftAction[] | undefined {
 export function MacroPlanner() {
     const [macro, setMacro] = useState<string>("");
     const [macroAnalysis, setMacroAnalysis] = useState<string>("");
+    const [isStartButtonDisabled, setIsStartButtonDisabled] = useState<boolean>(false);
     const [ language, setLanguage ] = useLanguage();
     const t = translationProvider(language);
     const {getCraftConfig} = useCraftConfiguration();
@@ -116,14 +118,23 @@ export function MacroPlanner() {
                 return;
             }
             setMacro(t("InProgress"));
-            const macro = plan_macro(craftParameter, initialQuality, longer);
-            updateMacro(exportMacro(macro, t))
+            setIsStartButtonDisabled(true);
+            plan_macro(craftParameter, initialQuality, longer)
+                .then(macro => {
+                    updateMacro(exportMacro(macro, t))
+                })
+                .catch(err => {
+                    setMacro(err);
+                })
+                .finally(() => {
+                    setIsStartButtonDisabled(false);
+                })
         }
     }
 
     return <div className="mt-3">
-        <Button variant="primary" onClick={onStartButtonClick(false)}>{t("PlanMacroFaster")}</Button>
-        <Button className="ml-2" variant="secondary" onClick={onStartButtonClick(true)}>{t("PlanMacroBetter")}</Button>
+        <Button variant="primary" disabled={isStartButtonDisabled} onClick={onStartButtonClick(false)}>{t("PlanMacroFaster")}</Button>
+        <Button className="ml-2" variant="secondary" disabled={isStartButtonDisabled} onClick={onStartButtonClick(true)}>{t("PlanMacroBetter")}</Button>
 
         <Form.Group className="mt-3" controlId="macroOutput">
             <Form.Label>{t("OutputMacro")}</Form.Label>

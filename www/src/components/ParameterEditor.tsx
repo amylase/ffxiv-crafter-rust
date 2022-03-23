@@ -201,9 +201,9 @@ export function ParameterEditor(props: Props) {
         <Row>
             <Form.Group as={Col}>
                 <Form.Label>{t("RecipeLevel")}</Form.Label>
-                <Form.Control as={"select"} onChange={(e) => {const num = parseInt(e.target.value); setRecipeLevel(num); onItemParameterChange({recipe_level: num})}}>
+                <Form.Control as={"select"} value={recipeLevel} onChange={(e) => {const num = parseInt(e.target.value); setRecipeLevel(num); onItemParameterChange({recipe_level: num})}}>
                     {recipeLevels.map((rLevel) => {
-                        return <option key={rLevel} value={levelTable[rLevel]} selected={levelTable[rLevel] === recipeLevel}>{rLevel}</option>
+                        return <option key={rLevel} value={levelTable[rLevel]}>{rLevel}</option>
                     })}
                 </Form.Control>
             </Form.Group>
