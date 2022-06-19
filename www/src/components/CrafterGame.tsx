@@ -93,6 +93,9 @@ export function CrafterGame() {
             <ParameterEditor initialValue={craftConfig} onChange={onConfigChange}/>
         </div>
         <Tabs className="mt-3">
+            <Tab eventKey="macro" title={t("Macro")}>
+                <MacroPlanner />        
+            </Tab>
             <Tab eventKey="advice" title={t("Advisor")}>
                 <div className="mt-3">
                     <Button variant="primary" onClick={onStartButtonClick}>Start</Button>
@@ -119,9 +122,6 @@ export function CrafterGame() {
 
                     <Button variant="danger" onClick={onResetButtonClick}>Reset</Button>
                 </div>
-            </Tab>
-            <Tab eventKey="macro" title={t("Macro")}>
-                <MacroPlanner />        
             </Tab>
         </Tabs>
 
