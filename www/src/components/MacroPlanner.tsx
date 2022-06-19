@@ -33,13 +33,23 @@ function escapeActionName(action: CraftAction, t: ReturnType<typeof translationP
 
 function exportMacro(actions: CraftAction[], t: ReturnType<typeof translationProvider>): string {
     const macroSize = 15;
-    const macros: string[] = [];
-    for (let i = 0; i < actions.length; i += 15) {
-        const chunk = actions.slice(i, Math.min(i + 15, actions.length));
-        const macro = chunk.map(action => `/action ${escapeActionName(action, t)} <wait.${actionTime(action)}>`).join('\n');
-        macros.push(macro);
+    let currentMacroSize = 0;
+    let chunks = 0;
+    const lines: string[] = [];
+    for (let i = 0; i < actions.length; i++) {
+        const action = actions[i];
+        const isLastAction = i === actions.length - 1;
+        const macro = `/action ${escapeActionName(action, t)} <wait.${actionTime(action)}>`;
+        if (currentMacroSize >= macroSize - 1 && (currentMacroSize >= macroSize || !isLastAction)) {
+            chunks += 1;
+            lines.push(`/echo Next <se.${chunks}>`)
+            lines.push('');
+            currentMacroSize = 0;
+        }
+        lines.push(macro);
+        currentMacroSize += 1;
     }
-    return macros.join('\n\n');
+    return lines.join('\n');
 }
 
 function parseMacro(macro: String): CraftAction[] | undefined {
