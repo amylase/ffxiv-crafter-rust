@@ -6,32 +6,9 @@ use crate::action::CraftAction;
 use rand::{thread_rng, Rng, prelude::SliceRandom};
 use serde::Serialize;
 
-fn interpolate(x1: f64, y1: f64, x2: f64, y2: f64, x: f64) -> f64 {
-    return (y2 - y1) / (x2 - x1) * (x - x1) + y1
-}
-
-// https://docs.google.com/spreadsheets/d/1P1YDa4KZu3eYeFXgLKKV5_9nYS_JhAOK0eS5y8UslGo/edit#gid=0
-fn hq_chance(quality_ratio: f64) -> f64 {
-    if quality_ratio < 0.7 {
-        return interpolate(0., 0.01, 0.7, 0.3, quality_ratio)
-    } else if quality_ratio < 0.8 {
-        return interpolate(0.7, 0.3, 0.8, 0.7, quality_ratio)
-    } else {
-        return interpolate(0.8, 0.7, 1., 1., quality_ratio)
-    }
-} 
-
 // optimizing expected HQ items per time
 fn annealing_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
     actual_objective(params, state, actions)
-    // let progress_bonus = state.progress as f64 / params.item.max_progress as f64;
-    // let quality_ratio = (state.quality as f64) / (params.item.max_quality as f64);
-    // let turns_bonus = 10. / (actions.len() as f64 + 1.);
-    // if state.result != CraftResult::SUCCESS {
-    //     progress_bonus
-    // } else {
-    //     return progress_bonus + hq_chance(quality_ratio) * turns_bonus;
-    // }
 }
 
 fn actual_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
@@ -93,6 +70,7 @@ fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
         .filter(|action| *action != CraftAction::Observe)
         .filter(|action| *action != CraftAction::FocusedTouch)
         .filter(|action| *action != CraftAction::FocusedSynthesis)
+        .filter(|action| *action != CraftAction::FinalAppraisal)
         .collect()
 }
 
