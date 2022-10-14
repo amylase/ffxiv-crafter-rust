@@ -6,7 +6,8 @@
             "job_level": 90,
             "craftsmanship": 3238,
             "control": 3221,
-            "max_cp": 625
+            "max_cp": 625,
+            "unavailable_actions": []
         },
         "item": {
             "recipe_level": 580,

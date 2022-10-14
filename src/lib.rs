@@ -107,7 +107,7 @@ mod test {
 
     #[test]
     fn test_available_actions() {
-        let params_str = r#"{"player":{"job_level":80,"craftsmanship":2978,"control":2787,"max_cp":655},"item":{"recipe_level":516,"max_durability":55,"max_progress":12046,"max_quality":81447}}"#;
+        let params_str = r#"{"player":{"job_level":80,"craftsmanship":2978,"control":2787,"max_cp":655,"unavailable_actions":[]},"item":{"recipe_level":516,"max_durability":55,"max_progress":12046,"max_quality":81447}}"#;
         let state_str = r#"{"durability":55,"progress":0,"quality":0,"cp":655,"condition":"NORMAL","inner_quiet":0,"innovation":0,"veneration":0,"muscle_memory":0,"waste_not":0,"great_strides":0,"final_appraisal":0,"manipulation":0,"standard_touch_ready":false,"advanced_touch_ready":false,"turn":1,"result":"ONGOING"}"#;
         let actual_string = available_actions(params_str, state_str);
         let mut actual: Vec<CraftAction> = serde_json::from_str(&actual_string).unwrap();
@@ -119,7 +119,7 @@ mod test {
 
     #[test]
     fn test_search_best_move() {
-        let params_str = r#"{"player":{"job_level":80,"craftsmanship":2978,"control":2787,"max_cp":655},"item":{"recipe_level":516,"max_durability":55,"max_progress":5059,"max_quality":15474}}"#;
+        let params_str = r#"{"player":{"job_level":80,"craftsmanship":2978,"control":2787,"max_cp":655,"unavailable_actions":[]},"item":{"recipe_level":516,"max_durability":55,"max_progress":5059,"max_quality":15474}}"#;
         let state_str = r#"{"durability":55,"progress":0,"quality":0,"cp":655,"condition":"NORMAL","inner_quiet":0,"innovation":0,"veneration":0,"muscle_memory":0,"waste_not":0,"great_strides":0,"final_appraisal":0,"manipulation":0,"standard_touch_ready":false,"advanced_touch_ready":false,"turn":1,"result":"ONGOING"}"#;
         let actual_string = search_best_move(params_str, state_str);
         println!("{}", actual_string)

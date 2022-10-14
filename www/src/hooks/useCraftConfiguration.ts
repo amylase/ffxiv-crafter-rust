@@ -19,6 +19,7 @@ export function useCraftConfiguration() {
                 craftsmanship: 2978,
                 control: 2787,
                 max_cp: 655,
+                unavailable_actions: [],
             };
             const craftParameter = {
                 player: playerParams,
@@ -28,6 +29,9 @@ export function useCraftConfiguration() {
                 params: craftParameter,
                 initialQuality: 0
             }
+        }
+        if (!config.params.player.unavailable_actions) {
+            config.params.player.unavailable_actions = [];
         }
         return config;    
     }

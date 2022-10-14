@@ -10,7 +10,8 @@ fn main() {
         job_level: 90,
         craftsmanship: 3252,
         control: 3174,
-        max_cp: 577
+        max_cp: 577,
+        unavailable_actions: vec![],
     };
     let item = ItemParameter {
         recipe_level: 580,

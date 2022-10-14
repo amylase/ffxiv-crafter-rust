@@ -514,6 +514,9 @@ impl CraftAction {
         if self.cp_cost(state) > state.cp {
             return false;
         }
+        if params.player.unavailable_actions.contains(self) {
+            return false;
+        }
         match self {
             Self::ByregotBlessing => state.inner_quiet > 0,
             Self::IntensiveSynthesis => state.condition == StatusCondition::GOOD || state.condition == StatusCondition::EXCELLENT,

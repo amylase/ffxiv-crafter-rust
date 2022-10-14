@@ -331,6 +331,10 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         en: "Invalid Parameters",
         ja: "パラメータの値が正しくありません"
     },
+    AvailableActions: {
+        en: "Available Actions",
+        ja: "使用可能なアクション",
+    }
 };
 
 export function translationProvider(language: string): (string) => string {

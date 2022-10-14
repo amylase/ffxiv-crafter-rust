@@ -44,6 +44,7 @@ pub struct PlayerParameter {
     pub craftsmanship: i64,
     pub control: i64,
     pub max_cp: i64,
+    pub unavailable_actions: Vec<CraftAction>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -65,6 +65,7 @@ export interface PlayerParameter {
     craftsmanship: number,
     control: number,
     max_cp: number,
+    unavailable_actions: CraftAction[],
 }
 
 export interface CraftParameter {

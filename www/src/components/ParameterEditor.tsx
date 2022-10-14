@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Col, Form, Row } from "react-bootstrap";
 import { useLanguage } from "../hooks/useLanguage";
-import { CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter } from "../models/gamestate";
+import { CraftAction, craftActions, CraftConfiguration, CraftParameter, ItemParameter, PlayerParameter } from "../models/gamestate";
 import { translationProvider } from "../translation";
 
 const levelTable = {
@@ -124,6 +124,11 @@ interface Props {
     onChange: (CraftConfiguration) => void;
 }
 
+type ActionAvailability = {
+    isManipulationAvailable: boolean;
+    isFirstTurnActionAvailable: boolean;
+}
+
 export function ParameterEditor(props: Props) {
     const {initialValue, onChange} = props;
     const [language, setLanguage] = useLanguage();
@@ -135,8 +140,23 @@ export function ParameterEditor(props: Props) {
     const [maxDurability, setMaxDurability] = useState<string>(initialValue.params.item.max_durability.toString());
     const [maxProgress, setMaxProgress] = useState<string>(initialValue.params.item.max_progress.toString());
     const [maxQuality, setMaxQuality] = useState<string>(initialValue.params.item.max_quality.toString());
-    const [initialQuality, setInitialQuality] = useState<string>(initialValue.initialQuality.toString());    
+    const [initialQuality, setInitialQuality] = useState<string>(initialValue.initialQuality.toString());
+    const [isManipulationAvailable, setIsManipulationAvailable] = useState<boolean>(!initialValue.params.player.unavailable_actions.includes("Manipulation"));
+    const [isFirstTurnActionAvailable, setIsFirstTurnActionAvailable] = useState<boolean>(!initialValue.params.player.unavailable_actions.includes("Reflect"));
     const t = translationProvider(language); 
+
+    function getUnavailableActions(availability: ActionAvailability) {
+        const unavailableActions: CraftAction[] = [];
+        if (!availability.isManipulationAvailable) {
+            unavailableActions.push("Manipulation");
+        }
+        if (!availability.isFirstTurnActionAvailable) {
+            unavailableActions.push("MuscleMemory");
+            unavailableActions.push("Reflect")
+        }
+        return unavailableActions;    
+    }
+
 
     const currentValue: CraftConfiguration = {
         params: {
@@ -145,6 +165,7 @@ export function ParameterEditor(props: Props) {
                 craftsmanship: parseInt(craftsmanship),
                 control: parseInt(control),
                 max_cp: parseInt(maxCP),
+                unavailable_actions: getUnavailableActions({isFirstTurnActionAvailable, isManipulationAvailable}),
             },
             item: {
                 recipe_level: recipeLevel,
@@ -167,6 +188,11 @@ export function ParameterEditor(props: Props) {
     }
     function onPlayerParameterChange(updates: Partial<PlayerParameter>) {
         onCraftParameterChange({player: {...currentValue.params.player, ...updates}});
+    }
+    function onActionAvailabilityChange(updates: Partial<ActionAvailability>) {
+        onPlayerParameterChange({
+            unavailable_actions: getUnavailableActions({isFirstTurnActionAvailable, isManipulationAvailable, ...updates})
+        })
     }
     function parseIntThen(input: string, callback: (parsedInt: number) => any) {
         const parsedNumber = parseInt(input);
@@ -194,6 +220,11 @@ export function ParameterEditor(props: Props) {
             <Form.Group as={Col}>
                 <Form.Label>{t("MaxCP")}</Form.Label>
                 <Form.Control value={maxCP} onChange={(e) => {setMaxCP(e.target.value); parseIntThen(e.target.value, (num) => onPlayerParameterChange({max_cp: num}))}}/>
+            </Form.Group>
+            <Form.Group as={Col}>
+                <Form.Label>{t("AvailableActions")}</Form.Label>
+                <Form.Check type="checkbox" checked={isManipulationAvailable} label={t('Manipulation')} onChange={(e) => {setIsManipulationAvailable(e.target.checked); onActionAvailabilityChange({isManipulationAvailable: e.target.checked})}}/>
+                <Form.Check type="checkbox" checked={isFirstTurnActionAvailable} label={t('Reflect') + '/' + t('MuscleMemory')} onChange={(e) => {setIsFirstTurnActionAvailable(e.target.checked); onActionAvailabilityChange({isFirstTurnActionAvailable: e.target.checked})}}/>
             </Form.Group>
         </Row>
         <Row>
