@@ -15,6 +15,10 @@ path = "src/experiment.rs"
 name = "macro_experiment"
 path = "src/macro_experiment.rs"
 
+[[bin]]
+name = "gen_macro"
+path = "src/gen_macro.rs"
+
 [features]
 default = ["console_error_panic_hook"]
 

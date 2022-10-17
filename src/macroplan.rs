@@ -4,7 +4,15 @@ use std::{ops::Range};
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
 use crate::action::CraftAction;
 use rand::{thread_rng, Rng, prelude::SliceRandom};
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct AnnealingParams {
+    pub steps: i64,
+    pub max_quality_scaling: f64,
+    pub start_temperature: f64,
+    pub end_temperature: f64,
+}
 
 // optimizing expected HQ items per time
 fn annealing_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
@@ -123,12 +131,20 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction
 }
 
 pub fn plan(orig_params: &CraftParameter, initial_quality: i64, longer: bool) -> Vec<CraftAction> {
+    return plan_with_annealing_params(orig_params, initial_quality, AnnealingParams {
+        steps: if longer { 5_000_000 } else { 1_000_000 },
+        max_quality_scaling: 1.1,
+        start_temperature: 0.01,
+        end_temperature: 0.0001,
+    })
+}
+
+pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality: i64, annealing_params: AnnealingParams) -> Vec<CraftAction> {
     let mut params = &mut orig_params.clone();
-    params.item.max_quality *= 11;
-    params.item.max_quality /= 10;
-    let steps = if longer { 5_000_000 } else { 1_000_000 };
-    let start_temperature = 0.01;
-    let end_temperature = 0.0001;
+    params.item.max_quality = (params.item.max_quality as f64 * annealing_params.max_quality_scaling) as i64;
+    let steps = annealing_params.steps;
+    let start_temperature = annealing_params.start_temperature;
+    let end_temperature = annealing_params.end_temperature;
 
     let mut actions: Vec<CraftAction> = vec![];
     let init_state = run_macro(params, &actions, initial_quality, true);
@@ -138,7 +154,7 @@ pub fn plan(orig_params: &CraftParameter, initial_quality: i64, longer: bool) ->
     let mut best_score = actual_objective(params, &init_state, &actions);
     for step in 0..steps {
         let temperature = start_temperature + (end_temperature - start_temperature) * step as f64 / steps as f64;
-        if step % 50000 == 0 {
+        if step % 50000 == -1 {
             println!("step: {step}");
             report(params, &best_actions, initial_quality, true);
             println!("");
