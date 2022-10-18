@@ -2,16 +2,16 @@
     "craft_params": {
         "player": {
             "job_level": 90,
-            "craftsmanship": 3138,
-            "control": 3266,
-            "max_cp": 557,
+            "craftsmanship": 3750,
+            "control": 3344,
+            "max_cp": 633,
             "unavailable_actions": []
         },
         "item": {
             "recipe_level": 610,
-            "max_durability": 80,
-            "max_progress": 3400,
-            "max_quality": 7100
+            "max_durability": 70,
+            "max_progress": 5060,
+            "max_quality": 12628
         }
     }
 }

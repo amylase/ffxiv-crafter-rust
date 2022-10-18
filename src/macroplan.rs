@@ -12,9 +12,11 @@ pub struct AnnealingParams {
     pub max_quality_scaling: f64,
     pub start_temperature: f64,
     pub end_temperature: f64,
+    pub add_proba: f64,
+    pub remove_proba: f64,
+    pub swap_proba: f64,
 }
 
-// optimizing expected HQ items per time
 fn annealing_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<CraftAction>) -> f64 {
     actual_objective(params, state, actions)
 }
@@ -82,11 +84,11 @@ fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
         .collect()
 }
 
-fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
+fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
     let mut rng = thread_rng();
     let choice: f64 = rng.gen();
     let mut new_actions = vec![];
-    if actions.len() <= 60 && (choice < 0.1 || actions.is_empty()) {
+    if actions.len() <= 60 && (choice < annealing_params.add_proba || actions.is_empty()) {
         // add
         let position = rng.gen_range(0..(actions.len() + 1));
         let new_action = *available_actions(params).choose(&mut rng).unwrap();
@@ -95,14 +97,14 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction
         new_actions.push(new_action);
         new_actions.extend_from_slice(&actions[position..]);
 
-    } else if choice < 0.2 {
+    } else if choice < annealing_params.add_proba + annealing_params.remove_proba {
         // remove
         let position = rng.gen_range(0..actions.len());
 
         new_actions.extend_from_slice(&actions[..position]);
         new_actions.extend_from_slice(&actions[(position + 1)..]);
 
-    } else if actions.len() >= 2 && choice < 0.25 {
+    } else if actions.len() >= 2 && choice < annealing_params.add_proba + annealing_params.remove_proba + annealing_params.swap_proba {
         // swap
         let mut position1 = rng.gen_range(0..(actions.len() - 1));
         let mut position2 = rng.gen_range(0..(actions.len() - 1));
@@ -131,15 +133,18 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction
 }
 
 pub fn plan(orig_params: &CraftParameter, initial_quality: i64, longer: bool) -> Vec<CraftAction> {
-    return plan_with_annealing_params(orig_params, initial_quality, AnnealingParams {
+    return plan_with_annealing_params(orig_params, initial_quality, &AnnealingParams {
         steps: if longer { 5_000_000 } else { 1_000_000 },
         max_quality_scaling: 1.1,
         start_temperature: 0.01,
         end_temperature: 0.0001,
+        add_proba: 0.1,
+        remove_proba: 0.1,
+        swap_proba: 0.05,
     })
 }
 
-pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality: i64, annealing_params: AnnealingParams) -> Vec<CraftAction> {
+pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality: i64, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
     let mut params = &mut orig_params.clone();
     params.item.max_quality = (params.item.max_quality as f64 * annealing_params.max_quality_scaling) as i64;
     let steps = annealing_params.steps;
@@ -159,7 +164,7 @@ pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality:
             report(params, &best_actions, initial_quality, true);
             println!("");
         }
-        let new_actions = tweak(params, &actions);
+        let new_actions = tweak(params, &actions, &annealing_params);
         let state = run_macro(params, &new_actions, initial_quality, true);
         let new_score = annealing_objective(params, &state, &new_actions);
         let new_actual_score = actual_objective(params, &state, &new_actions);
@@ -226,7 +231,7 @@ pub fn report(params: &CraftParameter, actions: &Vec<CraftAction>, initial_quali
     let annealing = annealing_objective(params, &state, &actions);
     let actual = actual_objective(params, &state, &actions);
 
-    let samples = 1000;
+    let samples = 10000;
     let seeds: Range<u64> = 0..samples;
     let states: Vec<CraftState> = seeds.into_iter().map(|_seed| run_macro(&params, &actions, initial_quality, false)).collect();
     let success_rate: f64 = states.iter().map(|state| success_score(&params, state)).sum::<f64>() / samples as f64;
