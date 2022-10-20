@@ -84,13 +84,14 @@ fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
         .collect()
 }
 
-fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
+fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, state: &CraftState, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
     let mut rng = thread_rng();
     let choice: f64 = rng.gen();
     let mut new_actions = vec![];
-    if actions.len() <= 60 && (choice < annealing_params.add_proba || actions.is_empty()) {
+    let effective_length = actions.len().min(state.turn as usize);
+    if actions.len() < 43 && (choice < annealing_params.add_proba || actions.is_empty()) {
         // add
-        let position = rng.gen_range(0..(actions.len() + 1));
+        let position = rng.gen_range(0..(effective_length + 1));
         let new_action = *available_actions(params).choose(&mut rng).unwrap();
         
         new_actions.extend_from_slice(&actions[..position]);
@@ -106,14 +107,16 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, annealing_params: 
 
     } else if actions.len() >= 2 && choice < annealing_params.add_proba + annealing_params.remove_proba + annealing_params.swap_proba {
         // swap
-        let mut position1 = rng.gen_range(0..(actions.len() - 1));
-        let mut position2 = rng.gen_range(0..(actions.len() - 1));
+        let mut position1 = rng.gen_range(1..actions.len());
+        let mut position2 = rng.gen_range(0..actions.len());
+        if position1 <= position2 {
+            position1 -= 1;
+        }
         if position1 > position2 {
             swap(&mut position1, &mut position2)
         }
         if position1 == position2 {
-            // todo: avoid duplicate
-            return actions.clone();
+            panic!("same position swap");
         }
         new_actions.extend_from_slice(&actions[..position1]);
         new_actions.push(actions[position2]);
@@ -122,7 +125,7 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, annealing_params: 
         new_actions.extend_from_slice(&actions[(position2 + 1)..]);
     } else {
         // replace
-        let position = rng.gen_range(0..actions.len());
+        let position = rng.gen_range(0..effective_length.max(1));
         let new_action = *available_actions(params).choose(&mut rng).unwrap();
 
         new_actions.extend_from_slice(&actions[..position]);
@@ -136,36 +139,42 @@ pub fn plan(orig_params: &CraftParameter, initial_quality: i64, longer: bool) ->
     return plan_with_annealing_params(orig_params, initial_quality, &AnnealingParams {
         steps: if longer { 5_000_000 } else { 1_000_000 },
         max_quality_scaling: 1.1,
-        start_temperature: 0.01,
-        end_temperature: 0.0001,
-        add_proba: 0.1,
-        remove_proba: 0.1,
-        swap_proba: 0.05,
+        start_temperature: 0.010747741668553473,
+        end_temperature: 3.024309878441041e-05,
+        add_proba: 0.11496547825856514,
+        remove_proba: 0.10383571225068444,
+        swap_proba: 0.3026727330554753,
     })
+}
+
+fn get_temperature(time: f64, annealing_params: &AnnealingParams) -> f64 {
+    let start_temperature = annealing_params.start_temperature;
+    let end_temperature = annealing_params.end_temperature;
+    // return start_temperature.powf(1. - time) * end_temperature.powf(time);
+    return start_temperature + (end_temperature - start_temperature) * time;
 }
 
 pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality: i64, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
     let mut params = &mut orig_params.clone();
     params.item.max_quality = (params.item.max_quality as f64 * annealing_params.max_quality_scaling) as i64;
     let steps = annealing_params.steps;
-    let start_temperature = annealing_params.start_temperature;
-    let end_temperature = annealing_params.end_temperature;
 
     let mut actions: Vec<CraftAction> = vec![];
-    let init_state = run_macro(params, &actions, initial_quality, true);
-    let mut score = annealing_objective(params, &init_state, &actions);
+    let mut state = run_macro(params, &actions, initial_quality, true);
+    let mut score = annealing_objective(params, &state, &actions);
     let mut rng = thread_rng();
     let mut best_actions = actions.clone();
-    let mut best_score = actual_objective(params, &init_state, &actions);
+    let mut best_score = actual_objective(params, &state, &actions);
     for step in 0..steps {
-        let temperature = start_temperature + (end_temperature - start_temperature) * step as f64 / steps as f64;
+        let time = step as f64 / steps as f64;
+        let temperature = get_temperature(time, annealing_params);
         if step % 50000 == -1 {
             println!("step: {step}");
             report(params, &best_actions, initial_quality, true);
             println!("");
         }
-        let new_actions = tweak(params, &actions, &annealing_params);
-        let state = run_macro(params, &new_actions, initial_quality, true);
+        let new_actions = tweak(params, &actions, &state, &annealing_params);
+        state = run_macro(params, &new_actions, initial_quality, true);
         let new_score = annealing_objective(params, &state, &new_actions);
         let new_actual_score = actual_objective(params, &state, &new_actions);
         if new_score > score || rng.gen::<f64>() < ((new_score - score) / temperature).exp() {
@@ -173,6 +182,7 @@ pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality:
             actions = new_actions.clone();
         }
         if new_actual_score > best_score {
+            // println!("best score updated (step: {}): {} -> {}", step, best_score, new_actual_score);
             best_score = new_actual_score;
             best_actions = new_actions.clone();
         }
@@ -220,6 +230,7 @@ fn remove_unusable_actions(params: &CraftParameter, actions: &Vec<CraftAction>) 
 
 #[derive(Serialize)]
 pub struct MacroMetrics {
+    pub annealing_objective: f64,
     pub success_rate: f64,
     pub max_quality_rate: f64,
     pub average_quality: f64,
@@ -250,6 +261,7 @@ pub fn report(params: &CraftParameter, actions: &Vec<CraftAction>, initial_quali
         println!("{:?}", states[0]);    
     }
     return MacroMetrics {
+        annealing_objective: annealing,
         success_rate,
         max_quality_rate,
         average_quality,

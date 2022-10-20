@@ -19,7 +19,7 @@ fn main() {
         max_progress: 3900,
         max_quality: 10920,
     };
-    let initial_quality = 5460;
+    let initial_quality = 0;
     let params = CraftParameter {
         item,
         player
