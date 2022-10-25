@@ -13,17 +13,17 @@ def create_objective():
     
     def _objective(trial: optuna.Trial):
         trial_id = trial.number
-        end_temperature = trial.suggest_float("end_temperature", 10 ** -8, 10 ** -1, log=True)
-        start_temperature = trial.suggest_float("start_temperature", end_temperature, 10 ** 0, log=True)
+        start_temperature = trial.suggest_float("start_temperature", 10 ** -2, 10 ** -2, log=True)
+        temperature_scale = trial.suggest_float("temperature_scale", 10 ** -3, 10 ** 0, log=True)
         max_quality_scaling = trial.suggest_float("max_quality_scaling", 1.0, 1.5)
-        add_proba = trial.suggest_float("add_proba", 0.0, 1.0)
+        add_proba = trial.suggest_float("add_proba", 0.3, 0.3)
         remove_proba = trial.suggest_float("remove_proba", 0.0, 1.0 - add_proba)
         swap_proba = trial.suggest_float("swap_proba", 0.0, 1.0 - add_proba - remove_proba)
         params = {}
         params.update(base_params)
         params["annealing_params"] = {
             "start_temperature": start_temperature,
-            "end_temperature": end_temperature,
+            "end_temperature": start_temperature * temperature_scale,
             "steps": 1_000_000,
             "max_quality_scaling": max_quality_scaling,
             "add_proba": add_proba,
@@ -43,7 +43,7 @@ def create_objective():
 
 if __name__ == '__main__':
     objective = create_objective()
-    study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=1000, n_jobs=-1)
+    study = optuna.create_study(study_name='crafter_annealing', storage="sqlite:///optuna.db", direction="maximize")
+    study.optimize(objective, n_trials=100, n_jobs=-1)
     best_params = study.best_params
     print(best_params)

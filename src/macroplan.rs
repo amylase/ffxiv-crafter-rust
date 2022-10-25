@@ -139,11 +139,11 @@ pub fn plan(orig_params: &CraftParameter, initial_quality: i64, longer: bool) ->
     return plan_with_annealing_params(orig_params, initial_quality, &AnnealingParams {
         steps: if longer { 5_000_000 } else { 1_000_000 },
         max_quality_scaling: 1.1,
-        start_temperature: 0.010747741668553473,
-        end_temperature: 3.024309878441041e-05,
-        add_proba: 0.11496547825856514,
-        remove_proba: 0.10383571225068444,
-        swap_proba: 0.3026727330554753,
+        start_temperature: 0.01,
+        end_temperature: 0.00005,
+        add_proba: 0.3,
+        remove_proba: 0.3,
+        swap_proba: 0.35,
     })
 }
 

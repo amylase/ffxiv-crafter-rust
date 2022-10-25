@@ -7,3 +7,4 @@ wasm-pack.log
 
 **/venv
 python/buf
+optuna.db
