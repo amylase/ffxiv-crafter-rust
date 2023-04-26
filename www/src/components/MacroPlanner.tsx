@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useCraftConfiguration } from '../hooks/useCraftConfiguration';
 import { useLanguage } from '../hooks/useLanguage';
-import { CraftAction, craftActions, validateConfiguration } from '../models/gamestate';
+import { CraftAction, CraftParameter, craftActions, validateConfiguration } from '../models/gamestate';
 import { plan_macro } from '../rust/caller';
 import { evaluate_macro } from '../rust/rustfuncs';
 import { supportedLanguages, translationProvider } from '../translation';
@@ -129,7 +129,31 @@ export function MacroPlanner() {
             }
             setMacro(t("InProgress"));
             setIsStartButtonDisabled(true);
-            plan_macro(craftParameter, initialQuality, longer)
+
+            const cpuCount = navigator.hardwareConcurrency ?? 1;
+            const concurrency = Math.max(Math.floor(cpuCount * 0.8), 1);
+            const macroFutures = [];
+            for (let i = 0; i < concurrency; i++) {
+                macroFutures.push(plan_macro(craftParameter, initialQuality, longer))
+            }
+
+            Promise.all(macroFutures)
+                .then(macros => {
+                    const scores = macros
+                        .map(macro => evaluate_macro(craftParameter, macro, initialQuality))
+                        .map(evaluation => {
+                            if (evaluation.success_rate < 1) {
+                                return evaluation.success_rate;
+                            }
+                            if (evaluation.max_quality_rate < 1) {
+                                return 1 + evaluation.average_quality;
+                            }
+                            return 1 + evaluation.average_quality + 1 / evaluation.macro_length;
+                        })
+                    const bestScore = Math.max(...scores);
+                    const bestIndex = scores.findIndex(score => score === bestScore);
+                    return macros[bestIndex];
+                })
                 .then(macro => {
                     updateMacro(exportMacro(macro, t))
                 })
