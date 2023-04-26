@@ -3,8 +3,13 @@ import { SupportedMethod } from "./const";
 
 function run(message: any[]): Promise<any> {
     const worker = new Worker("./worker.js");
+    
     return new Promise((resolve, reject) => {
         worker.onmessage = (event) => {
+            if (event.data === "worker ready") {
+                worker.postMessage(message);
+                return;
+            }
             worker.terminate();
             resolve(event.data as CraftAction[]);
         }
@@ -15,7 +20,6 @@ function run(message: any[]): Promise<any> {
         worker.onmessageerror = () => {
             worker.terminate();
         }
-        worker.postMessage(message);
     })
 }
 
