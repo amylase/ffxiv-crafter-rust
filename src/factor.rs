@@ -735,8 +735,8 @@ fn condition_bit(condition: StatusCondition) -> i64 {
         StatusCondition::EXCELLENT => 4,
         StatusCondition::POOR => 8,
         StatusCondition::CENTRED => 16,
-        StatusCondition::PLIANT => 32,
-        StatusCondition::STURDY => 64,
+        StatusCondition::STURDY => 32,
+        StatusCondition::PLIANT => 64,
         StatusCondition::MALLEABLE => 128,
         StatusCondition::PRIMED => 256,
     }
