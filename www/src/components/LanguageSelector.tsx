@@ -5,7 +5,8 @@ import { supportedLanguages } from "../translation";
 
 const languageNameMapper = {
     en: "English",
-    ja: "日本語"
+    ja: "日本語",
+    ko: "한국어"
 };
 
 export function LanguageSelector() {
