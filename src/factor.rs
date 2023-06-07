@@ -175,6 +175,7 @@ lazy_static! {
         (611, 180),
         (620, 130),
         (640, 130),
+        (641, 180),
     ]));
 }  
 
@@ -301,6 +302,7 @@ lazy_static! {
         (611, 100),
         (620, 80),
         (640, 80),
+        (641, 100),
     ]));
 }  
 
@@ -427,6 +429,7 @@ lazy_static! {
         (611, 180),
         (620, 115),
         (640, 115),
+        (641, 180),
     ]));
 }  
 
@@ -553,6 +556,7 @@ lazy_static! {
         (611, 100),
         (620, 70),
         (640, 70),
+        (641, 100),
     ]));
 }  
 
@@ -703,6 +707,7 @@ lazy_static! {
         (611, 435),
         (620, 15),
         (640, 15),
+        (641, 995),
     ]));
 }  
 
@@ -725,6 +730,7 @@ fn expert_condition_probability(condition: StatusCondition) -> f64 {
         StatusCondition::STURDY => 0.15,
         StatusCondition::MALLEABLE => 0.12,
         StatusCondition::PRIMED => 0.12,
+        StatusCondition::GOOD_OMEN => 0.12,  // todo: check this value
     }
 }
 
@@ -739,18 +745,25 @@ fn condition_bit(condition: StatusCondition) -> i64 {
         StatusCondition::PLIANT => 64,
         StatusCondition::MALLEABLE => 128,
         StatusCondition::PRIMED => 256,
+        StatusCondition::GOOD_OMEN => 512,  // todo: check this value
     }
 }
 
 pub fn transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
     if is_expert_recipe(params.item.recipe_level) {
-        expert_recipe_transition_probabilities(params)
+        expert_recipe_transition_probabilities(params, state)
     } else {
         normal_recipe_transition_probabilities(params, state)
     }
 }
 
-fn expert_recipe_transition_probabilities(params: &CraftParameter) -> HashMap<StatusCondition, f64> {
+fn expert_recipe_transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
+    if state.condition == StatusCondition::GOOD_OMEN {
+        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
+            (StatusCondition::GOOD, 1.),
+        ]));
+    }
+
     let recipe_level = params.item.recipe_level;
     let mask = condition_mask(recipe_level);
     let mut normal_proba = 1.;

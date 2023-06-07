@@ -195,6 +195,11 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         en: "Primed",
         ja: "長持続"
     },
+    GOOD_OMEN: {
+        en: "Good Omen",
+        ja: "良兆候",
+        ko: "양징후",  // todo: fix this once 6.4 is released in Korean servers.
+    },
 
     // buffs
     inner_quiet: {

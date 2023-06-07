@@ -118,6 +118,7 @@ const levelTable = {
     "90★★★": 610,
     "90★★★ (Expert)": 611,
     "90★★★★": 620,
+    "90★★★★ (Expert)": 641,
 }
 
 interface Props {

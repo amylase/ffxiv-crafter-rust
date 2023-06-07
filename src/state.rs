@@ -15,6 +15,7 @@ pub enum StatusCondition {
     STURDY,
     MALLEABLE,
     PRIMED,
+    GOOD_OMEN,
 }
 
 pub fn all_status_conditions() -> Vec<StatusCondition> {
@@ -28,6 +29,7 @@ pub fn all_status_conditions() -> Vec<StatusCondition> {
         StatusCondition::STURDY,
         StatusCondition::MALLEABLE,
         StatusCondition::PRIMED,
+        StatusCondition::GOOD_OMEN,
     ]
 }
 

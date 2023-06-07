@@ -9,6 +9,7 @@ export const statusConditions = [
     "STURDY",
     "MALLEABLE",
     "PRIMED",
+    "GOOD_OMEN",
 ];
 export type StatusCondition = typeof statusConditions[number];
 
