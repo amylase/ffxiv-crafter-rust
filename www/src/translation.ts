@@ -414,7 +414,12 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         en: "Available Actions",
         ja: "使用可能なアクション",
         ko: "사용 가능한 액션"
-    }
+    },
+    ReportBug: {
+        en: "Report a bug",
+        ja: "バグを報告",
+        ko: "버그 신고",
+    },
 };
 
 export function translationProvider(language: string): (string) => string {
