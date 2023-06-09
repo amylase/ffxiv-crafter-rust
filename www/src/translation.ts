@@ -198,7 +198,7 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     GOOD_OMEN: {
         en: "Good Omen",
         ja: "良兆候",
-        ko: "양징후",  // todo: fix this once 6.4 is released in Korean servers.
+        ko: "좋은 징후",  // todo: fix this once 6.4 is released in Korean servers.
     },
 
     // buffs
