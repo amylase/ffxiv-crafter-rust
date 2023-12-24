@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref LEVEL_TABLE: HashMap<i64, i64> = HashMap::<i64, i64>::from_iter(IntoIterator::into_iter([
-        (51, 120),
+        (51, 115),
         (52, 125),
         (53, 130),
         (54, 133),
