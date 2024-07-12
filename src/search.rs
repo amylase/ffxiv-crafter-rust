@@ -4,7 +4,7 @@ use wasm_timer::Instant;
 
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
 use crate::action::{CraftAction, buff_turns, ProbabilisticResult, ProbabilisticState};
-use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, FocusedTouch, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, FinalAppraisal, WasteNot, WasteNotII, AdvancedTouch, TrainedFinesse};
+use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, FinalAppraisal, WasteNot, WasteNotII, AdvancedTouch, TrainedFinesse};
 
 #[derive(PartialOrd, PartialEq, Debug, Clone)]
 pub struct DFSResult {
@@ -65,8 +65,6 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
                     action = StandardTouch;
                 } else if state.prev_action.is_some() && state.prev_action.unwrap() == StandardTouch {
                     action = AdvancedTouch;
-                } else if state.prev_action.is_some() && state.prev_action.unwrap() == Observe {
-                    action = FocusedTouch;
                 } else if state.cp >= 18 * 3 && state.innovation == 0 {
                     action = Innovation;
                 } else {
@@ -92,7 +90,7 @@ fn is_completable(params: &CraftParameter, state: &CraftState) -> bool {
 fn is_quality_action(action: &CraftAction) -> bool {
     match action {
         BasicTouch | ByregotBlessing | PreparatoryTouch | AdvancedTouch | TrainedFinesse |
-        HastyTouch | PreciseTouch | Innovation | StandardTouch | FocusedTouch | GreatStrides |
+        HastyTouch | PreciseTouch | Innovation | StandardTouch | GreatStrides |
         PrudentTouch => true,
         _ => false
     }
