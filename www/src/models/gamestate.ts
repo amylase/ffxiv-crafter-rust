@@ -38,9 +38,7 @@ export const craftActions = [
     "Innovation",
     "Veneration",
     "MuscleMemory",
-    "FocusedSynthesis",
     "StandardTouch",
-    "FocusedTouch",
     "Reflect",
     "WasteNot",
     "WasteNotII",
@@ -51,6 +49,10 @@ export const craftActions = [
     "AdvancedTouch",
     "PrudentSynthesis",
     "TrainedFinesse",
+    "RefinedTouch",
+    "DaringTouch",
+    "ImmaculateMend",
+    "TrainedPerfection",
 ]
 export type CraftAction = typeof craftActions[number];
 
@@ -94,8 +96,11 @@ export interface CraftState {
     great_strides: number,
     final_appraisal: number,
     manipulation: number,
+    expedience: number,
+    trained_perfection: number,
     standard_touch_ready: boolean,
     advanced_touch_ready: boolean,
+    trained_perfection_remain: number,
     turn: number,
 
     prev_action?: CraftAction,
@@ -124,8 +129,11 @@ export function initial_state(config: CraftConfiguration): CraftState {
         great_strides: 0,
         final_appraisal: 0,
         manipulation: 0,
+        expedience: 0,
+        trained_perfection: 0,
         standard_touch_ready: false,
         advanced_touch_ready: false,
+        trained_perfection_remain: 1,
         turn: 1,
 
         result: "ONGOING",
@@ -136,7 +144,7 @@ export function validateConfiguration(config: CraftConfiguration): boolean {
     if (config.initialQuality < 0 || config.initialQuality > config.params.item.max_quality) {
         return false;
     }
-    if (config.params.player.job_level < 1 || config.params.player.job_level > 90) {
+    if (config.params.player.job_level < 1 || config.params.player.job_level > 100) {
         return false;
     }
     if (config.params.player.craftsmanship < 0) {

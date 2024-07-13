@@ -129,20 +129,10 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         ja: "確信",
         ko: "확신"
     },
-    FocusedSynthesis: {
-        en: "Focused Synthesis",
-        ja: "注視作業",
-        ko: "주시 작업"
-    },
     StandardTouch: {
         en: "Standard Touch",
         ja: "中級加工",
         ko: "중급 가공"
-    },
-    FocusedTouch: {
-        en: "Focused Touch",
-        ja: "注視加工",
-        ko: "주시 가공"
     },
     Reflect: {
         en: "Reflect",
@@ -193,6 +183,22 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         en: "Trained Finesse",
         ja: "匠の神業",
         ko: "장인의 황금손"
+    },
+    RefinedTouch: {
+        en: "Refined touch",
+        ja: "洗練加工",
+    },
+    DaringTouch: {
+        en: "Daring Touch",
+        ja: "デアリングタッチ",
+    },
+    ImmaculateMend: {
+        en: "Immaculate Mend",
+        ja: "パーフェクトメンド",
+    },
+    TrainedPerfection: {
+        en: "Trained Perfection",
+        ja: "匠の絶技",
     },
 
     // conditions

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "webpack --config webpack.config.js --mode production",
-    "start": "webpack-dev-server --mode production"
+    "start": "webpack-dev-server --mode development"
   },
   "author": "Shunsuke Ohashi <amylase.inquiry@gmail.com>",
   "devDependencies": {

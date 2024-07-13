@@ -13,7 +13,7 @@ export function GameStateView(props: Props) {
     const [ language, setLanguage ] = useLanguage();
     const t = translationProvider(language);
 
-    const buffs = ["inner_quiet", "innovation", "veneration", "muscle_memory", "waste_not", "great_strides", "final_appraisal", "manipulation"];
+    const buffs = ["inner_quiet", "innovation", "veneration", "muscle_memory", "waste_not", "great_strides", "final_appraisal", "manipulation", "expedience", "trained_perfection"];
     let buffStatuses = [];
     for (const buffName of buffs) {
         if (state[buffName] > 0) {
