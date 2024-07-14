@@ -111,7 +111,7 @@ mod test {
         let state_str = r#"{"durability":55,"progress":0,"quality":0,"cp":655,"condition":"NORMAL","inner_quiet":0,"innovation":0,"veneration":0,"muscle_memory":0,"waste_not":0,"great_strides":0,"final_appraisal":0,"manipulation":0,"standard_touch_ready":false,"advanced_touch_ready":false,"turn":1,"result":"ONGOING"}"#;
         let actual_string = available_actions(params_str, state_str);
         let mut actual: Vec<CraftAction> = serde_json::from_str(&actual_string).unwrap();
-        let mut expected = vec![BasicSynthesis, BasicTouch, MastersMend, DelicateSynthesis, CarefulSynthesis, Groundwork, Observe, PreparatoryTouch, RapidSynthesis, HastyTouch, Innovation, Veneration, MuscleMemory, FocusedSynthesis, StandardTouch, FocusedTouch, Reflect, WasteNot, WasteNotII, PrudentTouch, GreatStrides, FinalAppraisal, Manipulation];
+        let mut expected = vec![BasicSynthesis, BasicTouch, MastersMend, DelicateSynthesis, CarefulSynthesis, Groundwork, Observe, PreparatoryTouch, RapidSynthesis, HastyTouch, Innovation, Veneration, MuscleMemory, StandardTouch, Reflect, WasteNot, WasteNotII, PrudentTouch, GreatStrides, FinalAppraisal, Manipulation];
         actual.sort();
         expected.sort();
         assert_eq!(actual, expected);

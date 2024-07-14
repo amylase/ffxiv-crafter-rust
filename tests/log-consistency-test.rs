@@ -156,7 +156,6 @@ fn parse_japanese_action_name(action_name: &str) -> CraftAction {
         "上級加工" => CraftAction::AdvancedTouch,
         "模範作業" => CraftAction::CarefulSynthesis,
         "経過観察" => CraftAction::Observe,
-        "注視加工" => CraftAction::FocusedTouch,
         _ => panic!("unknown action name: {}", action_name)
     }
 }

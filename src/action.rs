@@ -22,9 +22,7 @@ pub enum CraftAction {
     Innovation,
     Veneration,
     MuscleMemory,
-    FocusedSynthesis,
     StandardTouch,
-    FocusedTouch,
     Reflect,
     WasteNot,
     WasteNotII,
@@ -35,6 +33,10 @@ pub enum CraftAction {
     AdvancedTouch,
     PrudentSynthesis,
     TrainedFinesse,
+    RefinedTouch,
+    DaringTouch,
+    ImmaculateMend,
+    TrainedPerfection,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -58,7 +60,7 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
 
     let mut state = state.clone();
     state.clip(params);
-    state.advanced_touch_ready = state.standard_touch_ready && state.prev_action == Some(CraftAction::StandardTouch);
+    state.advanced_touch_ready = state.standard_touch_ready && (state.prev_action == Some(CraftAction::StandardTouch) || state.prev_action == Some(CraftAction::Observe));
     state.standard_touch_ready = state.prev_action == Some(CraftAction::BasicTouch);
 
     if state.prev_action.is_some() && state.prev_action.unwrap() == CraftAction::FinalAppraisal {
@@ -90,6 +92,7 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
         state.durability += 5;
     }
     state.manipulation -= 1;
+    state.expedience -= 1;
     state.turn += 1;
     state.clip(params);
 
@@ -199,7 +202,8 @@ fn apply_masters_mend(state: &CraftState) -> ProbabilisticResult {
 
 fn apply_delicate_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
-    produce_progress(params, &mut next_state, 100.);
+    let progress_efficiency = if params.player.job_level >= 94 { 150. } else { 100. };
+    produce_progress(params, &mut next_state, progress_efficiency);
     produce_quality(params, &mut next_state, 100., 1);
     deterministic(next_state)
 }
@@ -255,6 +259,9 @@ fn apply_hasty_touch(params: &CraftParameter, state: &CraftState) -> Probabilist
     let failed_state = state.clone();
     let mut success_state = state.clone();
     produce_quality(params, &mut success_state, 100., 1);
+    if params.player.job_level >= 96 {
+        success_state.expedience = 1 + 1;
+    }
     return binary_result_states(success_state, failed_state, state, 0.6);
 }
 
@@ -289,16 +296,6 @@ fn apply_muscle_memory(params: &CraftParameter, state: &CraftState) -> Probabili
     deterministic(next_state)
 }
 
-fn apply_focused_synthesis(params: &CraftParameter, state: &CraftState, prev_action: &Option<CraftAction>) -> ProbabilisticResult {
-    let mut success_state = state.clone();
-    produce_progress(params, &mut success_state, 200.);
-    if prev_action == &Some(CraftAction::Observe) {
-        deterministic(success_state)
-    } else {
-        let failed_state = state.clone();
-        binary_result_states(success_state, failed_state, state, 0.5)
-    }
-}
 
 fn apply_standard_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
@@ -306,20 +303,9 @@ fn apply_standard_touch(params: &CraftParameter, state: &CraftState) -> Probabil
     deterministic(next_state)
 }
 
-fn apply_focused_touch(params: &CraftParameter, state: &CraftState, prev_action: &Option<CraftAction>) -> ProbabilisticResult {
-    let mut success_state = state.clone();
-    produce_quality(params, &mut success_state, 150., 1);
-    if prev_action == &Some(CraftAction::Observe) {
-        deterministic(success_state)
-    } else {
-        let failed_state = state.clone();
-        binary_result_states(success_state, failed_state, state, 0.5)
-    }
-}
-
 fn apply_reflect(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 100., 0);
+    produce_quality(params, &mut next_state, 300., 0);
     next_state.inner_quiet = 2;
     deterministic(next_state)
 }
@@ -378,6 +364,33 @@ fn apply_trained_finesse(params: &CraftParameter, state: &CraftState) -> Probabi
     deterministic(next_state)
 }
 
+fn apply_refined_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+    let mut next_state = state.clone();
+    let inner_quiet_progress = if state.standard_touch_ready { 2 } else { 1 };
+    produce_quality(params, &mut next_state, 100., inner_quiet_progress);
+    deterministic(next_state)
+}
+
+fn apply_daring_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+    let failed_state = state.clone();
+    let mut success_state = state.clone();
+    produce_quality(params, &mut success_state, 150., 1);
+    return binary_result_states(success_state, failed_state, state, 0.6);
+}
+
+fn apply_immaculate_mend(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+    let mut next_state = state.clone();
+    next_state.durability = params.item.max_durability;
+    deterministic(next_state)
+}
+
+fn apply_trained_perfection(state: &CraftState) -> ProbabilisticResult {
+    let mut next_state = state.clone();
+    next_state.trained_perfection = 1;
+    next_state.trained_perfection_remain -= 1;
+    deterministic(next_state)
+}
+
 impl CraftAction {
     fn base_cp_cost(&self, state: &CraftState) -> i64 {
         match self {
@@ -398,9 +411,7 @@ impl CraftAction {
             CraftAction::Innovation => 18,
             CraftAction::Veneration => 18,
             CraftAction::MuscleMemory => 6,
-            CraftAction::FocusedSynthesis => 5,
             CraftAction::StandardTouch => if state.standard_touch_ready { 18 } else { 32 },
-            CraftAction::FocusedTouch => 18,
             CraftAction::Reflect => 6,
             CraftAction::WasteNot => 56,
             CraftAction::WasteNotII => 98,
@@ -411,6 +422,10 @@ impl CraftAction {
             CraftAction::AdvancedTouch => if state.advanced_touch_ready { 18 } else { 46 },
             CraftAction::PrudentSynthesis => 18,
             CraftAction::TrainedFinesse => 32,
+            CraftAction::RefinedTouch => 24,
+            CraftAction::DaringTouch => 0,
+            CraftAction::ImmaculateMend => 112,
+            CraftAction::TrainedPerfection => 0,
         }
     }
 
@@ -442,9 +457,7 @@ impl CraftAction {
             CraftAction::Innovation => 0,
             CraftAction::Veneration => 0,
             CraftAction::MuscleMemory => 10,
-            CraftAction::FocusedSynthesis => 10,
             CraftAction::StandardTouch => 10,
-            CraftAction::FocusedTouch => 10,
             CraftAction::Reflect => 10,
             CraftAction::WasteNot => 0,
             CraftAction::WasteNotII => 0,
@@ -455,10 +468,17 @@ impl CraftAction {
             CraftAction::AdvancedTouch => 10,
             CraftAction::PrudentSynthesis => 5,
             CraftAction::TrainedFinesse => 0,
+            CraftAction::RefinedTouch => 10,
+            CraftAction::DaringTouch => 10,
+            CraftAction::ImmaculateMend => 0,
+            CraftAction::TrainedPerfection => 0,
         }
     }
 
     fn durability_cost(&self, state: &CraftState) -> i64 {
+        if state.trained_perfection > 0 {
+            return 0;
+        }
         let mut cost = self.base_durability_cost();
         if state.waste_not > 0 {
             cost = (cost + 1) / 2
@@ -488,9 +508,7 @@ impl CraftAction {
             CraftAction::Innovation => 26,
             CraftAction::Veneration => 15,
             CraftAction::MuscleMemory => 54,
-            CraftAction::FocusedSynthesis => 67,
             CraftAction::StandardTouch => 18,
-            CraftAction::FocusedTouch => 68,
             CraftAction::Reflect => 69,
             CraftAction::WasteNot => 15,
             CraftAction::WasteNotII => 47,
@@ -498,9 +516,13 @@ impl CraftAction {
             CraftAction::GreatStrides => 21,
             CraftAction::FinalAppraisal => 42,
             CraftAction::Manipulation => 65,
-            CraftAction::AdvancedTouch => 84,
+            CraftAction::AdvancedTouch => 68,
             CraftAction::PrudentSynthesis => 88,
             CraftAction::TrainedFinesse => 90,
+            CraftAction::RefinedTouch => 92,
+            CraftAction::DaringTouch => 96,
+            CraftAction::ImmaculateMend => 98,
+            CraftAction::TrainedPerfection => 100,
         }
     }
 
@@ -527,15 +549,19 @@ impl CraftAction {
             Self::PrudentTouch => state.waste_not <= 0,
             Self::PrudentSynthesis => state.waste_not <= 0,
             Self::TrainedFinesse => state.inner_quiet == 10,
+            Self::DaringTouch => state.expedience > 0,
+            Self::TrainedPerfection => state.trained_perfection_remain > 0,
             _ => true
         }
     }
 
     pub fn apply(&self, params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-        let prev_action = state.prev_action;
         let mut state = state.clone();
         state.cp -= self.cp_cost(&state);
         state.durability -= self.durability_cost(&state);
+        if self.base_durability_cost() > 0 && state.trained_perfection > 0 {
+            state.trained_perfection -= 1;
+        }
         state.prev_action = Some(*self);
 
         match self {
@@ -556,9 +582,7 @@ impl CraftAction {
             Self::Innovation => apply_innovation(&state),
             Self::Veneration => apply_veneration(&state),
             Self::MuscleMemory => apply_muscle_memory(params, &state),
-            Self::FocusedSynthesis => apply_focused_synthesis(params, &state, &prev_action),
             Self::StandardTouch => apply_standard_touch(params, &state),
-            Self::FocusedTouch => apply_focused_touch(params, &state, &prev_action),
             Self::Reflect => apply_reflect(params, &state),
             Self::WasteNot => apply_waste_not(&state),
             Self::WasteNotII => apply_waste_not_ii(&state),
@@ -569,6 +593,10 @@ impl CraftAction {
             Self::AdvancedTouch => apply_advanced_touch(params, &state),
             Self::PrudentSynthesis => apply_prudent_synthesis(params, &state),
             Self::TrainedFinesse => apply_trained_finesse(params, &state),
+            Self::RefinedTouch => apply_refined_touch(params, &state),
+            Self::DaringTouch => apply_daring_touch(params, &state),
+            Self::ImmaculateMend => apply_immaculate_mend(params, &state),
+            Self::TrainedPerfection => apply_trained_perfection(&state)
         }
     }
 
@@ -604,9 +632,7 @@ impl CraftAction {
             Self::Innovation,
             Self::Veneration,
             Self::MuscleMemory,
-            Self::FocusedSynthesis,
             Self::StandardTouch,
-            Self::FocusedTouch,
             Self::Reflect,
             Self::WasteNot,
             Self::WasteNotII,
@@ -617,6 +643,10 @@ impl CraftAction {
             Self::AdvancedTouch,
             Self::PrudentSynthesis,
             Self::TrainedFinesse,
+            Self::RefinedTouch,
+            Self::DaringTouch,
+            Self::ImmaculateMend,
+            Self::TrainedPerfection,
         ]
     }
 }

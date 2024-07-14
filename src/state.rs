@@ -79,8 +79,11 @@ pub struct CraftState {
     pub great_strides: i64,
     pub final_appraisal: i64,
     pub manipulation: i64,
-    pub standard_touch_ready: bool,
+    pub expedience: i64,
+    pub trained_perfection: i64,
+    pub standard_touch_ready: bool,  // shared with Refined Touch
     pub advanced_touch_ready: bool,
+    pub trained_perfection_remain: i64,
     pub turn: i64,
 
     pub prev_action: Option<CraftAction>,
@@ -102,6 +105,9 @@ impl CraftState {
         self.great_strides = max(0, self.great_strides);
         self.final_appraisal = max(0, self.final_appraisal);
         self.manipulation = max(0, self.manipulation);
+        self.expedience = max(0, self.expedience);
+        self.trained_perfection = max(0, self.trained_perfection);
+        self.trained_perfection_remain = max(0, self.trained_perfection_remain);
         self.turn = max(0, self.turn);
     }
 }
@@ -122,8 +128,11 @@ impl CraftParameter {
             great_strides: 0,
             final_appraisal: 0,
             manipulation: 0,
+            expedience: 0,
+            trained_perfection: 0,
             standard_touch_ready: false,
             advanced_touch_ready: false,
+            trained_perfection_remain: 1,
             turn: 0,
             prev_action: None,
             result: CraftResult::ONGOING
