@@ -131,7 +131,8 @@ export function MacroPlanner() {
             setIsStartButtonDisabled(true);
 
             const cpuCount = navigator.hardwareConcurrency ?? 1;
-            const concurrency = Math.max(Math.floor(cpuCount * 0.8), 1);
+            const cpuRatio = longer ? 0.8 : 0.4;
+            const concurrency = Math.max(Math.floor(cpuCount * cpuRatio), 1);
             const macroFutures = [];
             for (let i = 0; i < concurrency; i++) {
                 macroFutures.push(plan_macro(craftParameter, initialQuality, longer))

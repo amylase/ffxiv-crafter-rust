@@ -387,6 +387,7 @@ fn apply_immaculate_mend(params: &CraftParameter, state: &CraftState) -> Probabi
 fn apply_trained_perfection(state: &CraftState) -> ProbabilisticResult {
     let mut next_state = state.clone();
     next_state.trained_perfection = 1;
+    next_state.trained_perfection_remain -= 1;
     deterministic(next_state)
 }
 
@@ -475,6 +476,9 @@ impl CraftAction {
     }
 
     fn durability_cost(&self, state: &CraftState) -> i64 {
+        if state.trained_perfection > 0 {
+            return 0;
+        }
         let mut cost = self.base_durability_cost();
         if state.waste_not > 0 {
             cost = (cost + 1) / 2
@@ -555,6 +559,9 @@ impl CraftAction {
         let mut state = state.clone();
         state.cp -= self.cp_cost(&state);
         state.durability -= self.durability_cost(&state);
+        if self.base_durability_cost() > 0 && state.trained_perfection > 0 {
+            state.trained_perfection -= 1;
+        }
         state.prev_action = Some(*self);
 
         match self {
@@ -636,6 +643,10 @@ impl CraftAction {
             Self::AdvancedTouch,
             Self::PrudentSynthesis,
             Self::TrainedFinesse,
+            Self::RefinedTouch,
+            Self::DaringTouch,
+            Self::ImmaculateMend,
+            Self::TrainedPerfection,
         ]
     }
 }

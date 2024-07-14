@@ -15,7 +15,7 @@ export function App(props: {}) {
                 <CrafterGame/>
             </div>
             <div className={"ml-5 mb-2"}>
-                © 2023 <a href="https://github.com/amylase">amylase</a> (Shigure Hash@Typhon) and contributors. <a href="https://github.com/amylase/ffxiv-crafter-rust/issues">{t("ReportBug")}</a>
+                © 2024 <a href="https://github.com/amylase">amylase</a> (Shigure Hash@Typhon) and contributors. <a href="https://github.com/amylase/ffxiv-crafter-rust/issues">{t("ReportBug")}</a>
             </div>
         </>
     );

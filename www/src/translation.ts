@@ -294,6 +294,14 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         ja: "マニピュレーション",
         ko: "교묘한 손놀림"
     },
+    expedience: {
+        en: "Expedience",
+        ja: "匠の好機",
+    },
+    trained_perfection: {
+        en: "Trained Perfection",
+        ja: "匠の絶技",
+    },
 
     // UI
     EnableAIAdvice: {

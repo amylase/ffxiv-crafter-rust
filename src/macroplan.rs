@@ -79,6 +79,7 @@ fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
         .filter(|action| *action != CraftAction::HastyTouch)
         .filter(|action| *action != CraftAction::Observe)
         .filter(|action| *action != CraftAction::FinalAppraisal)
+        .filter(|action| *action != CraftAction::DaringTouch)
         .collect()
 }
 
