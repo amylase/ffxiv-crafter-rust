@@ -154,7 +154,7 @@ fn get_temperature(time: f64, annealing_params: &AnnealingParams) -> f64 {
 }
 
 pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality: i64, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
-    let mut params = &mut orig_params.clone();
+    let params = &mut orig_params.clone();
     params.item.max_quality = (params.item.max_quality as f64 * annealing_params.max_quality_scaling) as i64;
     let steps = annealing_params.steps;
 
@@ -186,12 +186,13 @@ pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality:
             best_actions = new_actions.clone();
         }
     }
-    return post_process(params, &best_actions);
+    return post_process(params, initial_quality, &best_actions);
 }
 
-fn post_process(params: &CraftParameter, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
+fn post_process(params: &CraftParameter, initial_quality: i64, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
     let mut actions = actions.clone();
     actions = remove_unusable_actions(params, &actions);
+    actions = insert_trick_of_the_trade(params, initial_quality, &actions);
     return actions;
 }
 
@@ -225,6 +226,25 @@ fn remove_unusable_actions(params: &CraftParameter, actions: &Vec<CraftAction>) 
         used_actions.push(next_action);
     }
     return used_actions;
+}
+
+fn insert_trick_of_the_trade(params: &CraftParameter, initial_quality: i64, actions: &Vec<CraftAction>) -> Vec<CraftAction> {
+    let mut tweaked_actions = vec![];
+    for turn in 0..(actions.len() - 1) {
+        let nn_action = actions[turn + 1];
+        if nn_action == CraftAction::ByregotBlessing {
+            tweaked_actions.push(CraftAction::TrickOfTheTrade);
+        }
+        tweaked_actions.push(actions[turn]);
+    }
+    tweaked_actions.push(actions[actions.len() - 1]);
+    let result_before = report(params, actions, initial_quality, false);
+    let result_after = report(params, &tweaked_actions, initial_quality, false);
+    if result_before.max_quality_rate < 1. && result_after.max_quality_rate == 1. {
+        return tweaked_actions;
+    } else {
+        return actions.to_vec();
+    }
 }
 
 #[derive(Serialize)]

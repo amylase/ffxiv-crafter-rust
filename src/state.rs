@@ -4,6 +4,7 @@ use std::cmp::max;
 use num;
 use crate::action::CraftAction;
 
+#[allow(non_camel_case_types)]
 #[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum StatusCondition {
     NORMAL,
