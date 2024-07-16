@@ -3,6 +3,7 @@ import { CrafterGame } from "./components/CrafterGame";
 import { LanguageSelector } from "./components/LanguageSelector";
 import { translationProvider } from "./translation";
 import { useLanguage } from "./hooks/useLanguage";
+import { Alert } from "react-bootstrap";
 
 
 export function App(props: {}) {
@@ -10,6 +11,9 @@ export function App(props: {}) {
     const t = translationProvider(language)
     return (
         <>
+            <Alert variant="warning">
+                {t("ThisIsEndwalker")}
+            </Alert>
             <div className={"m-5"}>
                 <LanguageSelector/>
                 <CrafterGame/>

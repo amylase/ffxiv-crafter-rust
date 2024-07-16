@@ -425,6 +425,13 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         ja: "バグを報告",
         ko: "버그 신고",
     },
+
+    // announcement
+    ThisIsEndwalker: {
+        en: "This is Endwalker version.",
+        ja: "これは暁月バージョンです。",
+        ko: "이것은 효월의 종언 버전입니다.",
+    },
 };
 
 export function translationProvider(language: string): (string) => string {
