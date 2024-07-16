@@ -439,6 +439,23 @@ const dictionary: {[key: string]: DictionaryEntry} = {
         ja: "バグを報告",
         ko: "버그 신고",
     },
+
+    // dawntrail announcements
+    DawntrailReleased: {
+        en: "Dawntrail feature is supported.",
+        ja: "黄金のレガシーに対応しました。",
+        ko: "황금의 유산에 대응했습니다.",
+    },
+    EndwalkerHere: {
+        en: "Endwalker version",
+        ja: "暁月バージョン",
+        ko: "효월의 종언 버전",
+    },
+    EndwalkerForKoreaChina: {
+        en: "(for users from South Korea or China)",
+        ja: "（韓国・中国サーバー向け）",
+        ko: "(한국·중국 서버용)",
+    },
 };
 
 export function translationProvider(language: string): (string) => string {
