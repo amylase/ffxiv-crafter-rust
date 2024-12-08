@@ -301,7 +301,7 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     expedience: {
         en: "Expedience",
         ja: "匠の好機",
-        ko: "장인의 운",
+        ko: "장인의 운때",
     },
     trained_perfection: {
         en: "Trained Perfection",
