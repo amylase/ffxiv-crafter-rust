@@ -187,18 +187,22 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     RefinedTouch: {
         en: "Refined touch",
         ja: "洗練加工",
+        ko: "세련 가공",
     },
     DaringTouch: {
         en: "Daring Touch",
         ja: "デアリングタッチ",
+        ko: "대담한 손길"
     },
     ImmaculateMend: {
         en: "Immaculate Mend",
         ja: "パーフェクトメンド",
+        ko: "완벽한 땜질"
     },
     TrainedPerfection: {
         en: "Trained Perfection",
         ja: "匠の絶技",
+        ko: "장인의 초절 기술"
     },
 
     // conditions
@@ -297,10 +301,12 @@ const dictionary: {[key: string]: DictionaryEntry} = {
     expedience: {
         en: "Expedience",
         ja: "匠の好機",
+        ko: "장인의 운",
     },
     trained_perfection: {
         en: "Trained Perfection",
         ja: "匠の絶技",
+        ko: "장인의 초절 기술"
     },
 
     // UI
