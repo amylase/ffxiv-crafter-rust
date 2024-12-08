@@ -23,7 +23,7 @@ path = "src/gen_macro.rs"
 default = ["console_error_panic_hook"]
 
 [dependencies]
-wasm-bindgen = "0.2.63"
+wasm-bindgen = "0.2.63,<=0.2.83"
 num = "0.4.0"
 rand = "0.8.4"
 getrandom = { version = "0.2.3", features = ["js"] }
