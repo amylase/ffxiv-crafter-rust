@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::state::{CraftParameter, CraftResult, CraftState, StatusCondition};
 use crate::factor::{transition_probabilities, progress_div, crafting_level, progress_mod, quality_div, quality_mod};
+use std::cell::Cell;
 use strum_macros::{EnumString, AsRefStr};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize, EnumString, AsRefStr)]
@@ -45,13 +46,15 @@ pub struct ProbabilisticState {
     pub probability: f64,
 }
 
-pub type ProbabilisticResult = Vec<ProbabilisticState>;
+/// `play` produces at most (success / failure) x (number of reachable next status
+/// conditions) states. The widest condition mask yields 7 conditions, so 2 x 7.
+pub const MAX_PROBABILISTIC_STATES: usize = 16;
+pub type ProbabilisticResult = arrayvec::ArrayVec<ProbabilisticState, MAX_PROBABILISTIC_STATES>;
 
 fn deterministic(state: CraftState) -> ProbabilisticResult {
-    vec![ProbabilisticState {
-        probability: 1.,
-        state,
-    }]
+    let mut v = ProbabilisticResult::new();
+    v.push(ProbabilisticState { probability: 1., state });
+    v
 }
 
 fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
@@ -96,9 +99,8 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     state.turn += 1;
     state.clip(params);
 
-    let mut result = vec![];
-    let mut condition_probas: Vec<(StatusCondition, f64)> = transition_probabilities(params, &state).into_iter().collect();
-    condition_probas.sort_by_key(|&(sc, _p)| sc);
+    let mut result = ProbabilisticResult::new();
+    let condition_probas = transition_probabilities(params, &state);
     for &(status_condition, probability) in condition_probas.iter() {
         let mut next_state = state.clone();
         next_state.condition = status_condition;
@@ -111,12 +113,32 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
 }
 
 // https://docs.google.com/document/d/1Fl5X16oPF-4X29v5PukCkVgcPhZsbzhKcoq6Us7fhKU/edit#
-fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64) {
+thread_local! {
+    static FACTOR_CACHE: Cell<Option<(i64, i64, i64, i64, f64, f64)>> = Cell::new(None);
+}
+
+/// (p2, q2) depend only on the craft parameters, so cache them per parameter set.
+fn base_factors(params: &CraftParameter) -> (f64, f64) {
+    let key = (params.player.job_level, params.player.craftsmanship, params.player.control, params.item.recipe_level);
+    if let Some((jl, cm, ct, rl, p2, q2)) = FACTOR_CACHE.with(|c| c.get()) {
+        if (jl, cm, ct, rl) == key {
+            return (p2, q2);
+        }
+    }
     let crafting_level = crafting_level(params.player.job_level);
     let recipe_level = params.item.recipe_level;
     let p1 = params.player.craftsmanship as f64 * 10. / progress_div(recipe_level) as f64 + 2.;
-    let penalty = if crafting_level <= recipe_level { progress_mod(recipe_level) as f64 / 100. } else { 1. };
-    let p2 = p1 * penalty;
+    let p_penalty = if crafting_level <= recipe_level { progress_mod(recipe_level) as f64 / 100. } else { 1. };
+    let p2 = p1 * p_penalty;
+    let q1 = params.player.control as f64 * 10. / quality_div(recipe_level) as f64 + 35.;
+    let q_penalty = if crafting_level <= recipe_level { quality_mod(recipe_level) as f64 / 100. } else { 1. };
+    let q2 = q1 * q_penalty;
+    FACTOR_CACHE.with(|c| c.set(Some((key.0, key.1, key.2, key.3, p2, q2))));
+    (p2, q2)
+}
+
+fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64) {
+    let (p2, _) = base_factors(params);
     let condition = if state.condition == StatusCondition::MALLEABLE { 1.5 } else { 1. };
     let mut buffs = 1.;
     if state.veneration > 0 {
@@ -133,11 +155,7 @@ fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_effici
 }
 
 fn produce_quality(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64, inner_quiet_progress: i64) {
-    let crafting_level = crafting_level(params.player.job_level);
-    let recipe_level = params.item.recipe_level;
-    let q1 = params.player.control as f64 * 10. / quality_div(recipe_level) as f64 + 35.;
-    let penalty = if crafting_level <= recipe_level { quality_mod(recipe_level) as f64 / 100. } else { 1. };
-    let q2 = q1 * penalty;
+    let (_, q2) = base_factors(params);
     let condition = if state.condition == StatusCondition::POOR {
         0.5
     } else if state.condition == StatusCondition::GOOD {
@@ -175,10 +193,10 @@ pub fn buff_turns(state: &CraftState, base_turn: i64) -> i64 {
 
 fn binary_result_states(success_result: CraftState, failed_result: CraftState, current_state: &CraftState, base_success_proba: f64) -> ProbabilisticResult {
     let success_proba = base_success_proba + if current_state.condition == StatusCondition::CENTRED { 0.25 } else { 0. };
-    return vec![
-        ProbabilisticState { probability: success_proba, state: success_result },
-        ProbabilisticState { probability: 1. - success_proba, state: failed_result }
-    ];
+    let mut v = ProbabilisticResult::new();
+    v.push(ProbabilisticState { probability: success_proba, state: success_result });
+    v.push(ProbabilisticState { probability: 1. - success_proba, state: failed_result });
+    v
 }
 
 fn apply_basic_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
@@ -475,7 +493,7 @@ impl CraftAction {
         }
     }
 
-    fn durability_cost(&self, state: &CraftState) -> i64 {
+    pub fn durability_cost(&self, state: &CraftState) -> i64 {
         if state.trained_perfection > 0 {
             return 0;
         }
@@ -601,7 +619,7 @@ impl CraftAction {
     }
 
     pub fn play(&self, params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-        let mut result: ProbabilisticResult = vec![];
+        let mut result: ProbabilisticResult = ProbabilisticResult::new();
         for applied_state in self.apply(params, state).iter() {
             for ticked_state in tick(params, &applied_state.state).iter() {
                 result.push(ProbabilisticState {
@@ -614,39 +632,47 @@ impl CraftAction {
     }
 
     pub fn all_actions() -> Vec<CraftAction> {
-        vec![
-            Self::BasicSynthesis,
-            Self::BasicTouch,
-            Self::MastersMend,
-            Self::DelicateSynthesis,
-            Self::CarefulSynthesis,
-            Self::Groundwork,
-            Self::Observe,
-            Self::ByregotBlessing,
-            Self::PreparatoryTouch,
-            Self::RapidSynthesis,
-            Self::IntensiveSynthesis,
-            Self::HastyTouch,
-            Self::PreciseTouch,
-            Self::TrickOfTheTrade,
-            Self::Innovation,
-            Self::Veneration,
-            Self::MuscleMemory,
-            Self::StandardTouch,
-            Self::Reflect,
-            Self::WasteNot,
-            Self::WasteNotII,
-            Self::PrudentTouch,
-            Self::GreatStrides,
-            Self::FinalAppraisal,
-            Self::Manipulation,
-            Self::AdvancedTouch,
-            Self::PrudentSynthesis,
-            Self::TrainedFinesse,
-            Self::RefinedTouch,
-            Self::DaringTouch,
-            Self::ImmaculateMend,
-            Self::TrainedPerfection,
-        ]
+        ALL_ACTIONS.to_vec()
+    }
+
+    pub fn all_actions_slice() -> &'static [CraftAction] {
+        &ALL_ACTIONS
     }
 }
+
+pub const ALL_ACTIONS: [CraftAction; 32] = {
+    [
+            CraftAction::BasicSynthesis,
+            CraftAction::BasicTouch,
+            CraftAction::MastersMend,
+            CraftAction::DelicateSynthesis,
+            CraftAction::CarefulSynthesis,
+            CraftAction::Groundwork,
+            CraftAction::Observe,
+            CraftAction::ByregotBlessing,
+            CraftAction::PreparatoryTouch,
+            CraftAction::RapidSynthesis,
+            CraftAction::IntensiveSynthesis,
+            CraftAction::HastyTouch,
+            CraftAction::PreciseTouch,
+            CraftAction::TrickOfTheTrade,
+            CraftAction::Innovation,
+            CraftAction::Veneration,
+            CraftAction::MuscleMemory,
+            CraftAction::StandardTouch,
+            CraftAction::Reflect,
+            CraftAction::WasteNot,
+            CraftAction::WasteNotII,
+            CraftAction::PrudentTouch,
+            CraftAction::GreatStrides,
+            CraftAction::FinalAppraisal,
+            CraftAction::Manipulation,
+            CraftAction::AdvancedTouch,
+            CraftAction::PrudentSynthesis,
+            CraftAction::TrainedFinesse,
+            CraftAction::RefinedTouch,
+            CraftAction::DaringTouch,
+            CraftAction::ImmaculateMend,
+            CraftAction::TrainedPerfection,
+    ]
+};

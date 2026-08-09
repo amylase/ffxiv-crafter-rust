@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap as HashMap;
 
 use wasm_timer::Instant;
 
@@ -23,26 +23,26 @@ pub fn terminal_score(params: &CraftParameter, state: &CraftState) -> f64 {
     }
 }
 
-fn is_positive_durability_after_action(params: &CraftParameter, state: &CraftState, action: CraftAction) -> bool {
-    action.apply(params, &state).iter().all(|proba_state| proba_state.state.durability > 0)
+fn is_positive_durability_after_action(state: &CraftState, action: CraftAction) -> bool {
+    state.durability - action.durability_cost(state) > 0
 }
 
 pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
     let mut state = state.clone();
     while state.result == CraftResult::ONGOING {
-        let synthesis_playable = is_positive_durability_after_action(params, &state, BasicSynthesis);
-        let touch_playable = BasicTouch.is_playable(&params, &state) && is_positive_durability_after_action(params, &state, BasicTouch);
+        let synthesis_playable = is_positive_durability_after_action(&state, BasicSynthesis);
+        let touch_playable = BasicTouch.is_playable(&params, &state) && is_positive_durability_after_action(&state, BasicTouch);
         let mend_playable = MastersMend.is_playable(&params, &state);
         let action: CraftAction;
         if !(synthesis_playable || touch_playable || mend_playable) {
-            action = CraftAction::all_actions().into_iter().filter(|action| action.is_playable(&params, &state)).next().unwrap();
+            action = *CraftAction::all_actions_slice().iter().filter(|action| action.is_playable(&params, &state)).next().unwrap();
         } else if !(synthesis_playable || touch_playable) {
             action = MastersMend
         } else if state.cp > 200 && state.manipulation == 0 {
             action = Manipulation
         } else {
             let calc_synthesis_progress = |state: &CraftState| {
-                BasicSynthesis.play(params, &state).get(0).unwrap().state.progress
+                BasicSynthesis.apply(params, &state).get(0).unwrap().state.progress
             };
             let synthesis_progress = calc_synthesis_progress(&state);
             if synthesis_playable && state.progress < synthesis_progress && synthesis_progress < params.item.max_progress {
@@ -129,97 +129,118 @@ pub fn adaptive_dfs(params: &CraftParameter, state: &CraftState) -> DFSResult {
 }
 
 pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult {
-    let mut memo: HashMap<CraftState, DFSResult> = HashMap::new();
-    _dfs(params, state, depth, &mut memo)
+    let mut memo: Memo = Memo::default();
+    let (best_score, _) = _dfs(params, state, depth, &mut memo);
+    DFSResult {
+        best_score,
+        best_action_path: best_action_path(params, state, &memo),
+    }
 }
 
-fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut HashMap<CraftState, DFSResult>) -> DFSResult {
-    if memo.contains_key(state) {
-        return memo.get(state).unwrap().clone()
+/// Maps a state to its score and the action achieving it. The depth is
+/// deliberately not part of the key: scores from shallower evaluations of the
+/// same state are reused as an approximation, which is what keeps the search
+/// tractable.
+type Memo = HashMap<CraftState, (f64, Option<CraftAction>)>;
+
+/// Distribution the search recurses into after playing `action`. Non terminal
+/// states other than the expected next condition are folded into it, so that the
+/// search does not branch on the status condition.
+fn next_search_states(params: &CraftParameter, state: &CraftState, action: CraftAction) -> ProbabilisticResult {
+    let next_states = action.play(params, state);
+    if action == Observe {
+        return next_states;
+    }
+    let next_condition = if action == FinalAppraisal {
+        state.condition
+    } else if state.condition == StatusCondition::EXCELLENT {
+        StatusCondition::POOR
+    } else {
+        StatusCondition::NORMAL
+    };
+    let is_expected_ongoing = |proba_state: &ProbabilisticState| {
+        proba_state.state.result == CraftResult::ONGOING && proba_state.state.condition == next_condition
+    };
+    let terminal_proba: f64 = next_states.iter()
+        .filter(|proba_state| proba_state.state.result != CraftResult::ONGOING)
+        .map(|proba_state| proba_state.probability).sum();
+    let ongoing_proba = 1. - terminal_proba;
+    let normal_proba: f64 = next_states.iter().filter(|p| is_expected_ongoing(p)).map(|p| p.probability).sum();
+
+    let mut result = ProbabilisticResult::new();
+    for proba_state in next_states.iter().filter(|p| is_expected_ongoing(p)) {
+        result.push(ProbabilisticState {
+            state: proba_state.state.clone(),
+            probability: proba_state.probability * ongoing_proba / normal_proba,
+        });
+    }
+    for proba_state in next_states.iter().filter(|p| p.state.result != CraftResult::ONGOING) {
+        result.push(proba_state.clone());
+    }
+    result
+}
+
+/// Rebuilds the principal variation by following the memoized best actions along
+/// the first successor of each node.
+fn best_action_path(params: &CraftParameter, state: &CraftState, memo: &Memo) -> Vec<CraftAction> {
+    let mut path = vec![];
+    let mut state = state.clone();
+    while let Some(&(_, Some(action))) = memo.get(&state) {
+        path.push(action);
+        match next_search_states(params, &state, action).into_iter().next() {
+            Some(proba_state) => state = proba_state.state,
+            None => break,
+        }
+    }
+    path
+}
+
+fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Memo) -> (f64, Option<CraftAction>) {
+    if let Some(&entry) = memo.get(state) {
+        return entry;
     }
     if state.result != CraftResult::ONGOING {
-        let result =  DFSResult {
-            best_score: terminal_score(params, state),
-            best_action_path: vec![]
-        };
-        memo.insert(state.clone(), result.clone());
-        return result
+        let result = (terminal_score(params, state), None);
+        memo.insert(state.clone(), result);
+        return result;
     }
     if depth == 0 {
         let terminal_state = playout(params, state);
-        let result = DFSResult {
-            best_score: terminal_score(params, &terminal_state),
-            best_action_path: vec![]
-        };
-        memo.insert(state.clone(), result.clone());
-        return result
+        let result = (terminal_score(params, &terminal_state), None);
+        memo.insert(state.clone(), result);
+        return result;
     }
     let is_completable_state = is_completable(params, state);
-    let actions: Vec<CraftAction> = CraftAction::all_actions().into_iter()
-        .filter(|action| action.is_playable(params, state))
-        .filter(|action| is_completable_state || !is_quality_action(action))
-        .collect();
 
-    let mut results: Vec<DFSResult> = vec![];
     let mut best_score = 0.;
-    for action in actions {
+    let mut best_action = None;
+    for action in CraftAction::all_actions_slice().iter().copied() {
+        if !action.is_playable(params, state) {
+            continue
+        }
+        if !is_completable_state && is_quality_action(&action) {
+            continue
+        }
         if !is_meaningful_action(params, state, &action) {
             continue
         }
-        let next_states = action.play(params, state);
-        let mut next_search_states: ProbabilisticResult;
-        if action != Observe {
-            let next_condition = if action == CraftAction::FinalAppraisal {
-                state.condition 
-            } else if state.condition == StatusCondition::EXCELLENT {
-                StatusCondition::POOR
-            } else {
-                StatusCondition::NORMAL 
-            };
-            let next_normal_states: Vec<&ProbabilisticState> = next_states.iter()
-                .filter(|proba_state| proba_state.state.condition == next_condition)
-                .filter(|proba_state| proba_state.state.result == CraftResult::ONGOING)
-                .collect();
-            let next_terminal_states: Vec<&ProbabilisticState> = next_states.iter()
-                .filter(|proba_state| proba_state.state.result != CraftResult::ONGOING)
-                .collect();
-            let terminal_proba: f64 = next_terminal_states.iter().map(|proba_state| proba_state.probability).sum();
-            let ongoing_proba = 1. - terminal_proba;
-            let normal_proba: f64 = next_normal_states.iter().map(|proba_state| proba_state.probability).sum();
-            next_search_states = next_normal_states.iter()
-                .map(|proba_state| ProbabilisticState { state: proba_state.state.clone(), probability: proba_state.probability * ongoing_proba / normal_proba })
-                .collect();
-            for next_terminal_state in next_terminal_states {
-                next_search_states.push(next_terminal_state.clone());
-            }
-        } else {
-            next_search_states = next_states.clone();
-        }
         let mut score = 0.;
         let mut upper_bound = 1.;
-        let mut sub_results: Vec<DFSResult> = vec![];
-        for proba_state in next_search_states {
-            let next_depth =  depth - 1;
-            let sub_result = _dfs(params, &proba_state.state, next_depth, memo);
-            score += sub_result.best_score * proba_state.probability;
-            upper_bound -= (1. - sub_result.best_score) * proba_state.probability;
-            sub_results.push(sub_result);
+        for proba_state in next_search_states(params, state, action) {
+            let (sub_score, _) = _dfs(params, &proba_state.state, depth - 1, memo);
+            score += sub_score * proba_state.probability;
+            upper_bound -= (1. - sub_score) * proba_state.probability;
             if upper_bound < best_score {
                 break;
             }
         }
-        let sub_result = sub_results.into_iter().next().unwrap();
-        let mut extended_path = vec![action];
-        extended_path.extend(sub_result.best_action_path.into_iter());
-        let updated_sub_result = DFSResult {
-            best_score: score,
-            best_action_path: extended_path
-        };
-        results.push(updated_sub_result);
-        best_score = f64::max(best_score, score);
+        if best_action.is_none() || score > best_score {
+            best_score = f64::max(best_score, score);
+            best_action = Some(action);
+        }
     }
 
-    let result = results.into_iter().filter(|dfs_result| dfs_result.best_score == best_score).next().unwrap();
-    memo.insert(state.clone(), result.clone());
-    return result
+    let result = (best_score, best_action);
+    memo.insert(state.clone(), result);
+    result
 }
