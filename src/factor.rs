@@ -835,7 +835,10 @@ fn condition_bit(condition: StatusCondition) -> i64 {
     }
 }
 
-pub fn transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
+pub type ConditionProbas = arrayvec::ArrayVec<(StatusCondition, f64), 10>;
+
+/// Probabilities of the next status condition, ordered by `StatusCondition`.
+pub fn transition_probabilities(params: &CraftParameter, state: &CraftState) -> ConditionProbas {
     if is_expert_recipe(params.item.recipe_level) {
         expert_recipe_transition_probabilities(params, state)
     } else {
@@ -843,54 +846,46 @@ pub fn transition_probabilities(params: &CraftParameter, state: &CraftState) -> 
     }
 }
 
-fn expert_recipe_transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
+fn expert_recipe_transition_probabilities(params: &CraftParameter, state: &CraftState) -> ConditionProbas {
+    let mut probas = ConditionProbas::new();
     if state.condition == StatusCondition::GOOD_OMEN {
-        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
-            (StatusCondition::GOOD, 1.),
-        ]));
+        probas.push((StatusCondition::GOOD, 1.));
+        return probas;
     }
 
-    let recipe_level = params.item.recipe_level;
-    let mask = condition_mask(recipe_level);
+    let mask = condition_mask(params.item.recipe_level);
     let mut normal_proba = 1.;
-
-    let mut probas = HashMap::new();
     for condition in all_status_conditions() {
         if condition == StatusCondition::NORMAL {
+            // pushed first below, so that the result stays ordered
             continue;
         }
-        let bit = condition_bit(condition);
-        if mask & bit != 0 {
-            let proba = expert_condition_probability(condition);
-            normal_proba -= proba;
-            probas.insert(condition, proba);
+        if mask & condition_bit(condition) != 0 {
+            normal_proba -= expert_condition_probability(condition);
         }
     }
-
-    probas.insert(StatusCondition::NORMAL, normal_proba);
+    probas.push((StatusCondition::NORMAL, normal_proba));
+    for condition in all_status_conditions() {
+        if condition != StatusCondition::NORMAL && mask & condition_bit(condition) != 0 {
+            probas.push((condition, expert_condition_probability(condition)));
+        }
+    }
     probas
 }
 
-fn normal_recipe_transition_probabilities(params: &CraftParameter, state: &CraftState) -> HashMap<StatusCondition, f64> {
-    if state.condition == StatusCondition::EXCELLENT {
-        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
-            (StatusCondition::POOR, 1.),
-        ]));
+fn normal_recipe_transition_probabilities(params: &CraftParameter, state: &CraftState) -> ConditionProbas {
+    let mut probas = ConditionProbas::new();
+    match state.condition {
+        StatusCondition::EXCELLENT => probas.push((StatusCondition::POOR, 1.)),
+        StatusCondition::GOOD | StatusCondition::POOR => probas.push((StatusCondition::NORMAL, 1.)),
+        StatusCondition::NORMAL => {
+            let good_proba = if params.player.job_level >= 63 { 0.25 } else { 0.2 };
+            let excellent_proba = 0.04;
+            probas.push((StatusCondition::NORMAL, 1. - good_proba - excellent_proba));
+            probas.push((StatusCondition::GOOD, good_proba));
+            probas.push((StatusCondition::EXCELLENT, excellent_proba));
+        }
+        _ => panic!("invalid StatusCondition"),
     }
-    if state.condition == StatusCondition::GOOD || state.condition == StatusCondition::POOR {
-        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
-            (StatusCondition::NORMAL, 1.),
-        ]));
-    }
-    if state.condition == StatusCondition::NORMAL {
-        let good_proba = if params.player.job_level >= 63 { 0.25 } else { 0.2 };
-        let excellent_proba = 0.04;
-        let normal_proba = 1. - good_proba - excellent_proba;
-        return HashMap::<StatusCondition, f64>::from_iter(IntoIterator::into_iter([
-            (StatusCondition::NORMAL, normal_proba),
-            (StatusCondition::GOOD, good_proba),
-            (StatusCondition::EXCELLENT, excellent_proba),
-        ]));
-    }
-    panic!("invalid StatusCondition");
+    probas
 }

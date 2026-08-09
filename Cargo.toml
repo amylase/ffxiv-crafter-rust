@@ -29,6 +29,8 @@ rand = "0.8.4"
 getrandom = { version = "0.2.3", features = ["js"] }
 lazy_static = "1.4.0"
 rayon = "1.5.1"
+arrayvec = { version = "0.7", features = ["serde"] }
+rustc-hash = "2.0"
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.59"
@@ -53,5 +55,8 @@ wee_alloc = { version = "0.4.5", optional = true }
 wasm-bindgen-test = "0.3.13"
 
 [profile.release]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
+# The solver is CPU bound, so optimize for speed. wasm binary size is handled by
+# wasm-opt in the wasm-pack step.
+opt-level = 3
+lto = "fat"
+codegen-units = 1
