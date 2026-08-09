@@ -19,13 +19,17 @@ path = "src/macro_experiment.rs"
 name = "gen_macro"
 path = "src/gen_macro.rs"
 
+[[bin]]
+name = "bench"
+path = "src/bench.rs"
+
 [features]
 default = ["console_error_panic_hook"]
 
 [dependencies]
 wasm-bindgen = "0.2.88"
 num = "0.4.0"
-rand = "0.8.4"
+rand = { version = "0.8.4", features = ["small_rng"] }
 getrandom = { version = "0.2.3", features = ["js"] }
 lazy_static = "1.4.0"
 rayon = "1.5.1"

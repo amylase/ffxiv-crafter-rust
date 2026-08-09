@@ -631,6 +631,39 @@ lazy_static! {
     ]));
 }  
 
+/// Progress and quality base values, which depend only on `CraftParameter`.
+///
+/// Deriving these costs five `HashMap` lookups, and `produce_progress` /
+/// `produce_quality` used to redo them on every simulated turn. Computing them
+/// once per craft and passing them down keeps the hash lookups out of the
+/// simulation loop.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Factors {
+    /// `p2` truncated to an integer, as the progress formula does.
+    pub progress_base: f64,
+    /// `q2` truncated to an integer, as the quality formula does.
+    pub quality_base: f64,
+}
+
+impl Factors {
+    pub fn new(params: &CraftParameter) -> Factors {
+        let crafting_level = crafting_level(params.player.job_level);
+        let recipe_level = params.item.recipe_level;
+        let is_penalised = crafting_level <= recipe_level;
+
+        let p1 = params.player.craftsmanship as f64 * 10. / progress_div(recipe_level) as f64 + 2.;
+        let progress_penalty = if is_penalised { progress_mod(recipe_level) as f64 / 100. } else { 1. };
+
+        let q1 = params.player.control as f64 * 10. / quality_div(recipe_level) as f64 + 35.;
+        let quality_penalty = if is_penalised { quality_mod(recipe_level) as f64 / 100. } else { 1. };
+
+        Factors {
+            progress_base: ((p1 * progress_penalty) as i64) as f64,
+            quality_base: ((q1 * quality_penalty) as i64) as f64,
+        }
+    }
+}
+
 pub fn crafting_level(job_level: i64) -> i64 {
     if job_level <= 50 {
         job_level

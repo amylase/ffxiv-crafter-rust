@@ -3,7 +3,8 @@ use std::{ops::Range};
 
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
 use crate::action::CraftAction;
-use rand::{thread_rng, Rng, prelude::SliceRandom};
+use crate::factor::Factors;
+use rand::{thread_rng, Rng, SeedableRng, prelude::SliceRandom, rngs::SmallRng};
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -36,8 +37,12 @@ fn actual_objective(params: &CraftParameter, state: &CraftState, actions: &Vec<C
 }
 
 pub fn run_macro(params: &CraftParameter, actions: &Vec<CraftAction>, initial_quality: i64, force_normal: bool) -> CraftState {
-    let mut state = params.initial_state(initial_quality);
     let mut rng = thread_rng();
+    run_macro_with_rng(params, &Factors::new(params), actions, initial_quality, force_normal, &mut rng)
+}
+
+fn run_macro_with_rng<R: Rng>(params: &CraftParameter, factors: &Factors, actions: &[CraftAction], initial_quality: i64, force_normal: bool, rng: &mut R) -> CraftState {
+    let mut state = params.initial_state(initial_quality);
 
     for turn in 0..actions.len() {
         if state.result != CraftResult::ONGOING {
@@ -49,7 +54,15 @@ pub fn run_macro(params: &CraftParameter, actions: &Vec<CraftAction>, initial_qu
             state.turn += 1;
             continue;
         }
-        let next_states = next_action.play(&params, &state);
+        if force_normal {
+            // The condition is about to be pinned to NORMAL anyway, which makes
+            // the whole turn deterministic for all but three actions.
+            if let Some(next_state) = next_action.play_normal(params, factors, &state) {
+                state = next_state;
+                continue;
+            }
+        }
+        let next_states = next_action.play_with(&params, factors, &state);
 
         let choice: f64 = rng.gen();
         let mut accumulate: f64 = 0.;
@@ -69,7 +82,7 @@ pub fn run_macro(params: &CraftParameter, actions: &Vec<CraftAction>, initial_qu
     state
 }
 
-fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
+pub(crate) fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
     CraftAction::all_actions().into_iter()
         .filter(|action| params.player.job_level >= action.action_level())
         .filter(|action| *action != CraftAction::TrickOfTheTrade)
@@ -83,16 +96,15 @@ fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
         .collect()
 }
 
-fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, state: &CraftState, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
-    let mut rng = thread_rng();
+pub(crate) fn tweak<R: Rng>(available: &[CraftAction], actions: &[CraftAction], state: &CraftState, annealing_params: &AnnealingParams, rng: &mut R, new_actions: &mut Vec<CraftAction>) {
     let choice: f64 = rng.gen();
-    let mut new_actions = vec![];
+    new_actions.clear();
     let effective_length = actions.len().min(state.turn as usize);
     if actions.len() < 43 && (choice < annealing_params.add_proba || actions.is_empty()) {
         // add
         let position = rng.gen_range(0..(effective_length + 1));
-        let new_action = *available_actions(params).choose(&mut rng).unwrap();
-        
+        let new_action = *available.choose(rng).unwrap();
+
         new_actions.extend_from_slice(&actions[..position]);
         new_actions.push(new_action);
         new_actions.extend_from_slice(&actions[position..]);
@@ -125,13 +137,12 @@ fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, state: &CraftState
     } else {
         // replace
         let position = rng.gen_range(0..effective_length.max(1));
-        let new_action = *available_actions(params).choose(&mut rng).unwrap();
+        let new_action = *available.choose(rng).unwrap();
 
         new_actions.extend_from_slice(&actions[..position]);
         new_actions.push(new_action);
         new_actions.extend_from_slice(&actions[(position + 1)..]);
     }
-    return new_actions;
 }
 
 pub fn plan(orig_params: &CraftParameter, initial_quality: i64, longer: bool) -> Vec<CraftAction> {
@@ -158,10 +169,15 @@ pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality:
     params.item.max_quality = (params.item.max_quality as f64 * annealing_params.max_quality_scaling) as i64;
     let steps = annealing_params.steps;
 
-    let mut actions: Vec<CraftAction> = vec![];
-    let mut state = run_macro(params, &actions, initial_quality, true);
+    // hoisted out of the annealing loop: these depend only on params
+    let available = available_actions(params);
+    let factors = Factors::new(params);
+    let mut rng = SmallRng::from_entropy();
+
+    let mut actions: Vec<CraftAction> = Vec::with_capacity(64);
+    let mut new_actions: Vec<CraftAction> = Vec::with_capacity(64);
+    let mut state = run_macro_with_rng(params, &factors, &actions, initial_quality, true, &mut rng);
     let mut score = annealing_objective(params, &state, &actions);
-    let mut rng = thread_rng();
     let mut best_actions = actions.clone();
     let mut best_score = actual_objective(params, &state, &actions);
     for step in 0..steps {
@@ -172,18 +188,20 @@ pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality:
             report(params, &best_actions, initial_quality, true);
             println!("");
         }
-        let new_actions = tweak(params, &actions, &state, &annealing_params);
-        state = run_macro(params, &new_actions, initial_quality, true);
+        tweak(&available, &actions, &state, &annealing_params, &mut rng, &mut new_actions);
+        state = run_macro_with_rng(params, &factors, &new_actions, initial_quality, true, &mut rng);
         let new_score = annealing_objective(params, &state, &new_actions);
         let new_actual_score = actual_objective(params, &state, &new_actions);
-        if new_score > score || rng.gen::<f64>() < ((new_score - score) / temperature).exp() {
-            score = new_score;
-            actions = new_actions.clone();
-        }
         if new_actual_score > best_score {
             // println!("best score updated (step: {}): {} -> {}", step, best_score, new_actual_score);
             best_score = new_actual_score;
-            best_actions = new_actions.clone();
+            best_actions.clone_from(&new_actions);
+        }
+        if new_score > score || rng.gen::<f64>() < ((new_score - score) / temperature).exp() {
+            score = new_score;
+            // `new_actions` is rebuilt from scratch by `tweak`, so swapping the
+            // buffers instead of cloning keeps both allocations alive and reused.
+            swap(&mut actions, &mut new_actions);
         }
     }
     return post_process(params, initial_quality, &best_actions);

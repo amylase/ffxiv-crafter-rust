@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::state::{CraftParameter, CraftResult, CraftState, StatusCondition};
-use crate::factor::{transition_probabilities, progress_div, crafting_level, progress_mod, quality_div, quality_mod};
+use crate::factor::{transition_probabilities, Factors};
 use strum_macros::{EnumString, AsRefStr};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Hash, Debug, Deserialize, Serialize, EnumString, AsRefStr)]
@@ -110,13 +110,57 @@ fn tick(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
     result
 }
 
+/// `tick`, specialised to a caller that pins the condition to NORMAL.
+///
+/// Mirrors `tick` line for line up to the point where `tick` splits into one
+/// state per status condition; those states differ only in `condition`, so
+/// pinning it here yields the same result without the HashMap, the sort and the
+/// per-condition clones.
+fn tick_normal(params: &CraftParameter, state: &mut CraftState) {
+    debug_assert!(state.result == CraftResult::ONGOING);
+    debug_assert!(state.cp >= 0);
+
+    state.clip(params);
+    state.advanced_touch_ready = state.standard_touch_ready && (state.prev_action == Some(CraftAction::StandardTouch) || state.prev_action == Some(CraftAction::Observe));
+    state.standard_touch_ready = state.prev_action == Some(CraftAction::BasicTouch);
+    state.condition = StatusCondition::NORMAL;
+
+    if state.prev_action == Some(CraftAction::FinalAppraisal) {
+        return;
+    }
+
+    if state.progress >= params.item.max_progress {
+        if state.final_appraisal <= 0 {
+            state.result = CraftResult::SUCCESS;
+            return;
+        } else {
+            state.final_appraisal = 0;
+            state.progress = params.item.max_progress - 1;
+        }
+    }
+
+    if state.durability <= 0 {
+        state.result = CraftResult::FAILED;
+        return;
+    }
+
+    state.innovation -= 1;
+    state.veneration -= 1;
+    state.muscle_memory -= 1;
+    state.waste_not -= 1;
+    state.great_strides -= 1;
+    state.final_appraisal -= 1;
+    if state.manipulation > 0 && (state.prev_action.is_none() || state.prev_action.unwrap() != CraftAction::Manipulation) {
+        state.durability += 5;
+    }
+    state.manipulation -= 1;
+    state.expedience -= 1;
+    state.turn += 1;
+    state.clip(params);
+}
+
 // https://docs.google.com/document/d/1Fl5X16oPF-4X29v5PukCkVgcPhZsbzhKcoq6Us7fhKU/edit#
-fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64) {
-    let crafting_level = crafting_level(params.player.job_level);
-    let recipe_level = params.item.recipe_level;
-    let p1 = params.player.craftsmanship as f64 * 10. / progress_div(recipe_level) as f64 + 2.;
-    let penalty = if crafting_level <= recipe_level { progress_mod(recipe_level) as f64 / 100. } else { 1. };
-    let p2 = p1 * penalty;
+fn produce_progress(factors: &Factors, state: &mut CraftState, base_efficiency: f64) {
     let condition = if state.condition == StatusCondition::MALLEABLE { 1.5 } else { 1. };
     let mut buffs = 1.;
     if state.veneration > 0 {
@@ -126,18 +170,13 @@ fn produce_progress(params: &CraftParameter, state: &mut CraftState, base_effici
         buffs += 1.;
     }
     let efficiency = base_efficiency * buffs;
-    let progress = ((p2 as i64) as f64 * condition * efficiency / 100.) as i64;
+    let progress = (factors.progress_base * condition * efficiency / 100.) as i64;
 
     state.progress += progress;
     state.muscle_memory = 0;
 }
 
-fn produce_quality(params: &CraftParameter, state: &mut CraftState, base_efficiency: f64, inner_quiet_progress: i64) {
-    let crafting_level = crafting_level(params.player.job_level);
-    let recipe_level = params.item.recipe_level;
-    let q1 = params.player.control as f64 * 10. / quality_div(recipe_level) as f64 + 35.;
-    let penalty = if crafting_level <= recipe_level { quality_mod(recipe_level) as f64 / 100. } else { 1. };
-    let q2 = q1 * penalty;
+fn produce_quality(factors: &Factors, state: &mut CraftState, base_efficiency: f64, inner_quiet_progress: i64) {
     let condition = if state.condition == StatusCondition::POOR {
         0.5
     } else if state.condition == StatusCondition::GOOD {
@@ -156,7 +195,7 @@ fn produce_quality(params: &CraftParameter, state: &mut CraftState, base_efficie
     }
 
     let efficiency = base_efficiency * (1. + state.inner_quiet as f64 / 10.) * buffs;
-    let quality = ((q2 as i64) as f64 * condition * efficiency / 100.) as i64;
+    let quality = (factors.quality_base * condition * efficiency / 100.) as i64;
 
     state.quality += quality as i64;
     state.inner_quiet += inner_quiet_progress;
@@ -173,222 +212,147 @@ pub fn buff_turns(state: &CraftState, base_turn: i64) -> i64 {
     }
 }
 
-fn binary_result_states(success_result: CraftState, failed_result: CraftState, current_state: &CraftState, base_success_proba: f64) -> ProbabilisticResult {
-    let success_proba = base_success_proba + if current_state.condition == StatusCondition::CENTRED { 0.25 } else { 0. };
-    return vec![
-        ProbabilisticState { probability: success_proba, state: success_result },
-        ProbabilisticState { probability: 1. - success_proba, state: failed_result }
-    ];
-}
-
-fn apply_basic_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
+fn apply_basic_synthesis(params: &CraftParameter, factors: &Factors, state: &mut CraftState) {
     let efficiency = if params.player.job_level >= 31 { 120. } else { 100. };
-    produce_progress(params, &mut next_state, efficiency);
-    deterministic(next_state)
+    produce_progress(factors, state, efficiency);
 }
 
-fn apply_basic_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 100., 1);
-    deterministic(next_state)
+fn apply_basic_touch(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 100., 1);
 }
 
-fn apply_masters_mend(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.durability += 30;
-    deterministic(next_state)
+fn apply_masters_mend(state: &mut CraftState) {
+    state.durability += 30;
 }
 
-fn apply_delicate_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
+fn apply_delicate_synthesis(params: &CraftParameter, factors: &Factors, state: &mut CraftState) {
     let progress_efficiency = if params.player.job_level >= 94 { 150. } else { 100. };
-    produce_progress(params, &mut next_state, progress_efficiency);
-    produce_quality(params, &mut next_state, 100., 1);
-    deterministic(next_state)
+    produce_progress(factors, state, progress_efficiency);
+    produce_quality(factors, state, 100., 1);
 }
 
-fn apply_careful_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
+fn apply_careful_synthesis(params: &CraftParameter, factors: &Factors, state: &mut CraftState) {
     let efficiency = if params.player.job_level >= 82 { 180. } else { 150. };
-    produce_progress(params, &mut next_state, efficiency);
-    deterministic(next_state)
+    produce_progress(factors, state, efficiency);
 }
 
-fn apply_groundwork(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
+fn apply_groundwork(params: &CraftParameter, factors: &Factors, state: &mut CraftState) {
     let base_efficiency = if params.player.job_level >= 86 { 360. } else { 300. };
     let efficiency = if state.durability < 0 { base_efficiency / 2. } else { base_efficiency };
-    produce_progress(params, &mut next_state, efficiency);
-    deterministic(next_state)
+    produce_progress(factors, state, efficiency);
 }
 
-fn apply_observe(state: &CraftState) -> ProbabilisticResult {
-    deterministic(state.clone())
-}
+fn apply_observe(_state: &mut CraftState) {}
 
-fn apply_byregot_blessing(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
+fn apply_byregot_blessing(factors: &Factors, state: &mut CraftState) {
     let efficiency = 20. * state.inner_quiet as f64 + 100.;
-    produce_quality(params, &mut next_state, efficiency, 0);
-    next_state.inner_quiet = 0;
-    deterministic(next_state)
+    produce_quality(factors, state, efficiency, 0);
+    state.inner_quiet = 0;
 }
 
-fn apply_preparatory_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 200., 2);
-    deterministic(next_state)
+fn apply_preparatory_touch(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 200., 2);
 }
 
-fn apply_rapid_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let failed_state = state.clone();
-    let mut success_state = state.clone();
+fn apply_rapid_synthesis(params: &CraftParameter, factors: &Factors, state: &mut CraftState) {
     let efficiency = if params.player.job_level >= 63 { 500. } else { 250. };  // todo: check if this number is correct
-    produce_progress(params, &mut success_state, efficiency);
-    binary_result_states(success_state, failed_state, state, 0.5)
+    produce_progress(factors, state, efficiency);
 }
 
-fn apply_intensive_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_progress(params, &mut next_state, 400.);
-    return deterministic(next_state);
+fn apply_intensive_synthesis(factors: &Factors, state: &mut CraftState) {
+    produce_progress(factors, state, 400.);
 }
 
-fn apply_hasty_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let failed_state = state.clone();
-    let mut success_state = state.clone();
-    produce_quality(params, &mut success_state, 100., 1);
+fn apply_hasty_touch(params: &CraftParameter, factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 100., 1);
     if params.player.job_level >= 96 {
-        success_state.expedience = 1 + 1;
+        state.expedience = 1 + 1;
     }
-    return binary_result_states(success_state, failed_state, state, 0.6);
 }
 
-fn apply_precise_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 150., 2);
-    deterministic(next_state)
+fn apply_precise_touch(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 150., 2);
 }
 
-fn apply_tricks_of_the_trade(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.cp += 20;
-    deterministic(next_state)
+fn apply_tricks_of_the_trade(state: &mut CraftState) {
+    state.cp += 20;
 }
 
-fn apply_innovation(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.innovation = buff_turns(state, 4) + 1;
-    deterministic(next_state)
+fn apply_innovation(state: &mut CraftState) {
+    state.innovation = buff_turns(state, 4) + 1;
 }
 
-fn apply_veneration(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.veneration = buff_turns(state, 4) + 1;
-    deterministic(next_state)
+fn apply_veneration(state: &mut CraftState) {
+    state.veneration = buff_turns(state, 4) + 1;
 }
 
-fn apply_muscle_memory(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_progress(params, &mut next_state, 300.);
-    next_state.muscle_memory = buff_turns(state, 5) + 1;
-    deterministic(next_state)
+fn apply_muscle_memory(factors: &Factors, state: &mut CraftState) {
+    let muscle_memory = buff_turns(state, 5) + 1;
+    produce_progress(factors, state, 300.);
+    state.muscle_memory = muscle_memory;
 }
 
-
-fn apply_standard_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 125., 1);
-    deterministic(next_state)
+fn apply_standard_touch(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 125., 1);
 }
 
-fn apply_reflect(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 300., 0);
-    next_state.inner_quiet = 2;
-    deterministic(next_state)
+fn apply_reflect(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 300., 0);
+    state.inner_quiet = 2;
 }
 
-fn apply_waste_not(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.waste_not = buff_turns(state, 4) + 1;
-    deterministic(next_state)
+fn apply_waste_not(state: &mut CraftState) {
+    state.waste_not = buff_turns(state, 4) + 1;
 }
 
-fn apply_waste_not_ii(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.waste_not = buff_turns(state, 8) + 1;
-    deterministic(next_state)
+fn apply_waste_not_ii(state: &mut CraftState) {
+    state.waste_not = buff_turns(state, 8) + 1;
 }
 
-fn apply_prudent_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 100., 1);
-    deterministic(next_state)
+fn apply_prudent_touch(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 100., 1);
 }
 
-fn apply_great_strides(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.great_strides = buff_turns(state, 3) + 1;
-    deterministic(next_state)
+fn apply_great_strides(state: &mut CraftState) {
+    state.great_strides = buff_turns(state, 3) + 1;
 }
 
-fn apply_final_appraisal(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.final_appraisal = buff_turns(state, 5);
-    deterministic(next_state)
+fn apply_final_appraisal(state: &mut CraftState) {
+    state.final_appraisal = buff_turns(state, 5);
 }
 
-fn apply_manipulation(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.manipulation = buff_turns(state, 8) + 1;
-    deterministic(next_state)
+fn apply_manipulation(state: &mut CraftState) {
+    state.manipulation = buff_turns(state, 8) + 1;
 }
 
-fn apply_advanced_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 150., 1);
-    deterministic(next_state)
+fn apply_advanced_touch(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 150., 1);
 }
 
-fn apply_prudent_synthesis(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_progress(params, &mut next_state, 180.);
-    deterministic(next_state)
+fn apply_prudent_synthesis(factors: &Factors, state: &mut CraftState) {
+    produce_progress(factors, state, 180.);
 }
 
-fn apply_trained_finesse(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    produce_quality(params, &mut next_state, 100., 1);
-    deterministic(next_state)
+fn apply_trained_finesse(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 100., 1);
 }
 
-fn apply_refined_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
+fn apply_refined_touch(factors: &Factors, state: &mut CraftState) {
     let inner_quiet_progress = if state.standard_touch_ready { 2 } else { 1 };
-    produce_quality(params, &mut next_state, 100., inner_quiet_progress);
-    deterministic(next_state)
+    produce_quality(factors, state, 100., inner_quiet_progress);
 }
 
-fn apply_daring_touch(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let failed_state = state.clone();
-    let mut success_state = state.clone();
-    produce_quality(params, &mut success_state, 150., 1);
-    return binary_result_states(success_state, failed_state, state, 0.6);
+fn apply_daring_touch(factors: &Factors, state: &mut CraftState) {
+    produce_quality(factors, state, 150., 1);
 }
 
-fn apply_immaculate_mend(params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.durability = params.item.max_durability;
-    deterministic(next_state)
+fn apply_immaculate_mend(params: &CraftParameter, state: &mut CraftState) {
+    state.durability = params.item.max_durability;
 }
 
-fn apply_trained_perfection(state: &CraftState) -> ProbabilisticResult {
-    let mut next_state = state.clone();
-    next_state.trained_perfection = 1;
-    next_state.trained_perfection_remain -= 1;
-    deterministic(next_state)
+fn apply_trained_perfection(state: &mut CraftState) {
+    state.trained_perfection = 1;
+    state.trained_perfection_remain -= 1;
 }
 
 impl CraftAction {
@@ -555,54 +519,98 @@ impl CraftAction {
         }
     }
 
-    pub fn apply(&self, params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
-        let mut state = state.clone();
-        state.cp -= self.cp_cost(&state);
-        state.durability -= self.durability_cost(&state);
+    /// Probability that the action takes effect. Only Rapid Synthesis, Hasty
+    /// Touch and Daring Touch can fail; everything else always succeeds.
+    fn success_probability(&self, state: &CraftState) -> f64 {
+        let base_success_proba = match self {
+            Self::RapidSynthesis => 0.5,
+            Self::HastyTouch | Self::DaringTouch => 0.6,
+            _ => return 1.,
+        };
+        base_success_proba + if state.condition == StatusCondition::CENTRED { 0.25 } else { 0. }
+    }
+
+    /// Pays the action's CP and durability cost and records it as the previous
+    /// action. Must run before `apply_effect`, which reads the paid-up state.
+    fn pay_costs(&self, state: &mut CraftState) {
+        state.cp -= self.cp_cost(state);
+        state.durability -= self.durability_cost(state);
         if self.base_durability_cost() > 0 && state.trained_perfection > 0 {
             state.trained_perfection -= 1;
         }
         state.prev_action = Some(*self);
+    }
 
+    /// Applies the action's effect in place, assuming it succeeds. Both the
+    /// probabilistic and the deterministic simulation paths go through here, so
+    /// action behaviour lives in exactly one place.
+    fn apply_effect(&self, params: &CraftParameter, factors: &Factors, state: &mut CraftState) {
         match self {
-            Self::BasicSynthesis => apply_basic_synthesis(params, &state),
-            Self::BasicTouch => apply_basic_touch(params, &state),
-            Self::MastersMend => apply_masters_mend(&state),
-            Self::DelicateSynthesis => apply_delicate_synthesis(params, &state),
-            Self::CarefulSynthesis => apply_careful_synthesis(params, &state),
-            Self::Groundwork => apply_groundwork(params, &state),
-            Self::Observe => apply_observe(&state),
-            Self::ByregotBlessing => apply_byregot_blessing(params, &state),
-            Self::PreparatoryTouch => apply_preparatory_touch(params, &state),
-            Self::RapidSynthesis => apply_rapid_synthesis(params, &state),
-            Self::IntensiveSynthesis => apply_intensive_synthesis(params, &state),
-            Self::HastyTouch => apply_hasty_touch(params, &state),
-            Self::PreciseTouch => apply_precise_touch(params, &state),
-            Self::TrickOfTheTrade => apply_tricks_of_the_trade(&state),
-            Self::Innovation => apply_innovation(&state),
-            Self::Veneration => apply_veneration(&state),
-            Self::MuscleMemory => apply_muscle_memory(params, &state),
-            Self::StandardTouch => apply_standard_touch(params, &state),
-            Self::Reflect => apply_reflect(params, &state),
-            Self::WasteNot => apply_waste_not(&state),
-            Self::WasteNotII => apply_waste_not_ii(&state),
-            Self::PrudentTouch => apply_prudent_touch(params, &state),
-            Self::GreatStrides => apply_great_strides(&state),
-            Self::FinalAppraisal => apply_final_appraisal(&state),
-            Self::Manipulation => apply_manipulation(&state),
-            Self::AdvancedTouch => apply_advanced_touch(params, &state),
-            Self::PrudentSynthesis => apply_prudent_synthesis(params, &state),
-            Self::TrainedFinesse => apply_trained_finesse(params, &state),
-            Self::RefinedTouch => apply_refined_touch(params, &state),
-            Self::DaringTouch => apply_daring_touch(params, &state),
-            Self::ImmaculateMend => apply_immaculate_mend(params, &state),
-            Self::TrainedPerfection => apply_trained_perfection(&state)
+            Self::BasicSynthesis => apply_basic_synthesis(params, factors, state),
+            Self::BasicTouch => apply_basic_touch(factors, state),
+            Self::MastersMend => apply_masters_mend(state),
+            Self::DelicateSynthesis => apply_delicate_synthesis(params, factors, state),
+            Self::CarefulSynthesis => apply_careful_synthesis(params, factors, state),
+            Self::Groundwork => apply_groundwork(params, factors, state),
+            Self::Observe => apply_observe(state),
+            Self::ByregotBlessing => apply_byregot_blessing(factors, state),
+            Self::PreparatoryTouch => apply_preparatory_touch(factors, state),
+            Self::RapidSynthesis => apply_rapid_synthesis(params, factors, state),
+            Self::IntensiveSynthesis => apply_intensive_synthesis(factors, state),
+            Self::HastyTouch => apply_hasty_touch(params, factors, state),
+            Self::PreciseTouch => apply_precise_touch(factors, state),
+            Self::TrickOfTheTrade => apply_tricks_of_the_trade(state),
+            Self::Innovation => apply_innovation(state),
+            Self::Veneration => apply_veneration(state),
+            Self::MuscleMemory => apply_muscle_memory(factors, state),
+            Self::StandardTouch => apply_standard_touch(factors, state),
+            Self::Reflect => apply_reflect(factors, state),
+            Self::WasteNot => apply_waste_not(state),
+            Self::WasteNotII => apply_waste_not_ii(state),
+            Self::PrudentTouch => apply_prudent_touch(factors, state),
+            Self::GreatStrides => apply_great_strides(state),
+            Self::FinalAppraisal => apply_final_appraisal(state),
+            Self::Manipulation => apply_manipulation(state),
+            Self::AdvancedTouch => apply_advanced_touch(factors, state),
+            Self::PrudentSynthesis => apply_prudent_synthesis(factors, state),
+            Self::TrainedFinesse => apply_trained_finesse(factors, state),
+            Self::RefinedTouch => apply_refined_touch(factors, state),
+            Self::DaringTouch => apply_daring_touch(factors, state),
+            Self::ImmaculateMend => apply_immaculate_mend(params, state),
+            Self::TrainedPerfection => apply_trained_perfection(state),
         }
     }
 
+    pub fn apply(&self, params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+        self.apply_with(params, &Factors::new(params), state)
+    }
+
+    pub fn apply_with(&self, params: &CraftParameter, factors: &Factors, state: &CraftState) -> ProbabilisticResult {
+        let mut state = state.clone();
+        self.pay_costs(&mut state);
+
+        let success_proba = self.success_probability(&state);
+        if success_proba >= 1. {
+            self.apply_effect(params, factors, &mut state);
+            return deterministic(state);
+        }
+
+        let failed_state = state.clone();
+        let mut success_state = state;
+        self.apply_effect(params, factors, &mut success_state);
+        vec![
+            ProbabilisticState { probability: success_proba, state: success_state },
+            ProbabilisticState { probability: 1. - success_proba, state: failed_state },
+        ]
+    }
+
     pub fn play(&self, params: &CraftParameter, state: &CraftState) -> ProbabilisticResult {
+        self.play_with(params, &Factors::new(params), state)
+    }
+
+    pub fn play_with(&self, params: &CraftParameter, factors: &Factors, state: &CraftState) -> ProbabilisticResult {
         let mut result: ProbabilisticResult = vec![];
-        for applied_state in self.apply(params, state).iter() {
+        for applied_state in self.apply_with(params, factors, state).iter() {
             for ticked_state in tick(params, &applied_state.state).iter() {
                 result.push(ProbabilisticState {
                     probability: ticked_state.probability * applied_state.probability,
@@ -611,6 +619,30 @@ impl CraftAction {
             }
         }
         result
+    }
+
+    /// Plays one turn with the status condition pinned to NORMAL, allocating
+    /// nothing and computing no transition probabilities.
+    ///
+    /// This is exactly what `run_macro(.., force_normal = true)` does: the
+    /// outcomes `tick` produces differ only in their `condition` field, which
+    /// the caller immediately overwrites with NORMAL, so sampling among them is
+    /// a no-op. Returns `None` for the three actions that can genuinely fail —
+    /// there the caller must fall back to `play`.
+    pub fn play_normal(&self, params: &CraftParameter, factors: &Factors, state: &CraftState) -> Option<CraftState> {
+        if self.success_probability(state) < 1. {
+            return None;
+        }
+        let mut next_state = state.clone();
+        self.pay_costs(&mut next_state);
+        self.apply_effect(params, factors, &mut next_state);
+        tick_normal(params, &mut next_state);
+        Some(next_state)
+    }
+
+    #[cfg(test)]
+    fn is_deterministic(&self) -> bool {
+        !matches!(self, Self::RapidSynthesis | Self::HastyTouch | Self::DaringTouch)
     }
 
     pub fn all_actions() -> Vec<CraftAction> {
@@ -648,5 +680,121 @@ impl CraftAction {
             Self::ImmaculateMend,
             Self::TrainedPerfection,
         ]
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use rand::prelude::SliceRandom;
+    use rand::{rngs::SmallRng, SeedableRng};
+
+    use super::*;
+    use crate::factor::Factors;
+    use crate::state::{ItemParameter, PlayerParameter};
+
+    fn craft_params(job_level: i64, recipe_level: i64) -> CraftParameter {
+        CraftParameter {
+            player: PlayerParameter {
+                job_level,
+                craftsmanship: 3252,
+                control: 3174,
+                max_cp: 577,
+                unavailable_actions: vec![],
+            },
+            item: ItemParameter {
+                recipe_level,
+                max_durability: 70,
+                max_progress: 3900,
+                max_quality: 10920,
+            },
+        }
+    }
+
+    /// The annealer's fast path assumes that pinning the status condition to
+    /// NORMAL makes a turn deterministic, because `tick`'s outcomes differ only
+    /// in their `condition` field. This walks random macros and asserts that
+    /// every outcome `play` can produce collapses onto what `play_normal`
+    /// returns, which is the property the fast path rests on.
+    #[test]
+    fn play_normal_matches_every_outcome_of_play() {
+        // 580 is a normal recipe, 641 and 516 are expert recipes.
+        let all_params = [
+            craft_params(90, 580),
+            craft_params(100, 580),
+            craft_params(100, 641),
+            craft_params(80, 516),
+            craft_params(62, 390),
+        ];
+
+        let mut checked_turns = 0;
+        for params in all_params.iter() {
+            let factors = Factors::new(params);
+            let candidates: Vec<CraftAction> = CraftAction::all_actions()
+                .into_iter()
+                .filter(|action| params.player.job_level >= action.action_level())
+                .filter(|action| action.is_deterministic())
+                .collect();
+
+            for seed in 0..300u64 {
+                let mut rng = SmallRng::seed_from_u64(seed);
+                let mut state = params.initial_state(0);
+
+                for _ in 0..60 {
+                    if state.result != CraftResult::ONGOING {
+                        break;
+                    }
+                    let action = *candidates.choose(&mut rng).unwrap();
+                    if !action.is_playable(params, &state) {
+                        state.turn += 1;
+                        continue;
+                    }
+
+                    let fast = action
+                        .play_normal(params, &factors, &state)
+                        .expect("deterministic action must take the fast path");
+                    let outcomes = action.play(params, &state);
+                    assert!(!outcomes.is_empty());
+                    for proba_state in outcomes.iter() {
+                        let mut pinned = proba_state.state.clone();
+                        pinned.condition = StatusCondition::NORMAL;
+                        assert_eq!(
+                            pinned, fast,
+                            "mismatch for {:?} at turn {} (rlv {})",
+                            action, state.turn, params.item.recipe_level
+                        );
+                    }
+
+                    checked_turns += 1;
+                    state = fast;
+                }
+            }
+        }
+        assert!(checked_turns > 10_000, "weak coverage: {} turns", checked_turns);
+    }
+
+    /// `apply` must still describe the same distribution for the actions that
+    /// can fail, which no longer go through a dedicated `binary_result_states`.
+    #[test]
+    fn failing_actions_keep_their_probabilities() {
+        let params = craft_params(100, 580);
+        let mut state = params.initial_state(0);
+        state.prev_action = Some(CraftAction::BasicSynthesis);
+        state.expedience = 2;
+
+        for (action, expected) in [
+            (CraftAction::RapidSynthesis, 0.5),
+            (CraftAction::HastyTouch, 0.6),
+            (CraftAction::DaringTouch, 0.6),
+        ] {
+            for (condition, bonus) in [(StatusCondition::NORMAL, 0.), (StatusCondition::CENTRED, 0.25)] {
+                let mut state = state.clone();
+                state.condition = condition;
+                let outcomes = action.apply(&params, &state);
+                assert_eq!(outcomes.len(), 2, "{:?}", action);
+                assert!((outcomes[0].probability - (expected + bonus)).abs() < 1e-9, "{:?}", action);
+                assert!((outcomes[1].probability - (1. - expected - bonus)).abs() < 1e-9, "{:?}", action);
+                assert!(action.play_normal(&params, &Factors::new(&params), &state).is_none());
+            }
+        }
     }
 }

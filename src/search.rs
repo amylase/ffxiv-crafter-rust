@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use wasm_timer::Instant;
 
 use crate::state::{CraftParameter, CraftState, CraftResult, StatusCondition};
+use crate::factor::Factors;
 use crate::action::{CraftAction, buff_turns, ProbabilisticResult, ProbabilisticState};
 use crate::action::CraftAction::{BasicSynthesis, BasicTouch, MastersMend, Manipulation, Veneration, StandardTouch, Observe, Innovation, RapidSynthesis, ByregotBlessing, PreparatoryTouch, HastyTouch, PreciseTouch, GreatStrides, PrudentTouch, FinalAppraisal, WasteNot, WasteNotII, AdvancedTouch, TrainedFinesse};
 
@@ -23,15 +24,15 @@ pub fn terminal_score(params: &CraftParameter, state: &CraftState) -> f64 {
     }
 }
 
-fn is_positive_durability_after_action(params: &CraftParameter, state: &CraftState, action: CraftAction) -> bool {
-    action.apply(params, &state).iter().all(|proba_state| proba_state.state.durability > 0)
+fn is_positive_durability_after_action(params: &CraftParameter, factors: &Factors, state: &CraftState, action: CraftAction) -> bool {
+    action.apply_with(params, factors, &state).iter().all(|proba_state| proba_state.state.durability > 0)
 }
 
-pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
+pub fn playout(params: &CraftParameter, factors: &Factors, state: &CraftState) -> CraftState {
     let mut state = state.clone();
     while state.result == CraftResult::ONGOING {
-        let synthesis_playable = is_positive_durability_after_action(params, &state, BasicSynthesis);
-        let touch_playable = BasicTouch.is_playable(&params, &state) && is_positive_durability_after_action(params, &state, BasicTouch);
+        let synthesis_playable = is_positive_durability_after_action(params, factors, &state, BasicSynthesis);
+        let touch_playable = BasicTouch.is_playable(&params, &state) && is_positive_durability_after_action(params, factors, &state, BasicTouch);
         let mend_playable = MastersMend.is_playable(&params, &state);
         let action: CraftAction;
         if !(synthesis_playable || touch_playable || mend_playable) {
@@ -42,7 +43,7 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
             action = Manipulation
         } else {
             let calc_synthesis_progress = |state: &CraftState| {
-                BasicSynthesis.play(params, &state).get(0).unwrap().state.progress
+                BasicSynthesis.play_with(params, factors, &state).get(0).unwrap().state.progress
             };
             let synthesis_progress = calc_synthesis_progress(&state);
             if synthesis_playable && state.progress < synthesis_progress && synthesis_progress < params.item.max_progress {
@@ -75,16 +76,16 @@ pub fn playout(params: &CraftParameter, state: &CraftState) -> CraftState {
             }
         }
 
-        state = action.play(params, &state).get(0).unwrap().state.clone();
+        state = action.play_with(params, factors, &state).get(0).unwrap().state.clone();
         state.condition = StatusCondition::NORMAL;
     }
     return state
 }
 
-fn is_completable(params: &CraftParameter, state: &CraftState) -> bool {
+fn is_completable(params: &CraftParameter, factors: &Factors, state: &CraftState) -> bool {
     let mut state = state.clone();
     state.final_appraisal = 0;
-    RapidSynthesis.play(params, &state).iter().any(|proba_state| proba_state.state.result == CraftResult::SUCCESS)
+    RapidSynthesis.play_with(params, factors, &state).iter().any(|proba_state| proba_state.state.result == CraftResult::SUCCESS)
 }
 
 fn is_quality_action(action: &CraftAction) -> bool {
@@ -96,7 +97,7 @@ fn is_quality_action(action: &CraftAction) -> bool {
     }
 }
 
-fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &CraftAction) -> bool {
+fn is_meaningful_action(params: &CraftParameter, factors: &Factors, state: &CraftState, action: &CraftAction) -> bool {
     if is_quality_action(action) {
         return state.quality < params.item.max_quality
     }
@@ -104,7 +105,7 @@ fn is_meaningful_action(params: &CraftParameter, state: &CraftState, action: &Cr
         FinalAppraisal => state.final_appraisal <= 0,
         BasicTouch => state.prev_action != Some(BasicTouch) && state.prev_action != Some(StandardTouch),
         StandardTouch => state.prev_action != Some(StandardTouch),
-        RapidSynthesis => RapidSynthesis.play(params, state).iter().all(|proba_state| proba_state.state.progress < params.item.max_progress),
+        RapidSynthesis => RapidSynthesis.play_with(params, factors, state).iter().all(|proba_state| proba_state.state.progress < params.item.max_progress),
         Veneration => buff_turns(state, 4) > state.veneration,
         Innovation => buff_turns(state, 4) > state.innovation,
         Manipulation => buff_turns(state, 8) > state.manipulation,
@@ -130,10 +131,12 @@ pub fn adaptive_dfs(params: &CraftParameter, state: &CraftState) -> DFSResult {
 
 pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult {
     let mut memo: HashMap<CraftState, DFSResult> = HashMap::new();
-    _dfs(params, state, depth, &mut memo)
+    // computed once per search rather than per simulated action
+    let factors = Factors::new(params);
+    _dfs(params, &factors, state, depth, &mut memo)
 }
 
-fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut HashMap<CraftState, DFSResult>) -> DFSResult {
+fn _dfs(params: &CraftParameter, factors: &Factors, state: &CraftState, depth: i64, memo: &mut HashMap<CraftState, DFSResult>) -> DFSResult {
     if memo.contains_key(state) {
         return memo.get(state).unwrap().clone()
     }
@@ -146,7 +149,7 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
         return result
     }
     if depth == 0 {
-        let terminal_state = playout(params, state);
+        let terminal_state = playout(params, factors, state);
         let result = DFSResult {
             best_score: terminal_score(params, &terminal_state),
             best_action_path: vec![]
@@ -154,7 +157,7 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
         memo.insert(state.clone(), result.clone());
         return result
     }
-    let is_completable_state = is_completable(params, state);
+    let is_completable_state = is_completable(params, factors, state);
     let actions: Vec<CraftAction> = CraftAction::all_actions().into_iter()
         .filter(|action| action.is_playable(params, state))
         .filter(|action| is_completable_state || !is_quality_action(action))
@@ -163,10 +166,10 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
     let mut results: Vec<DFSResult> = vec![];
     let mut best_score = 0.;
     for action in actions {
-        if !is_meaningful_action(params, state, &action) {
+        if !is_meaningful_action(params, factors, state, &action) {
             continue
         }
-        let next_states = action.play(params, state);
+        let next_states = action.play_with(params, factors, state);
         let mut next_search_states: ProbabilisticResult;
         if action != Observe {
             let next_condition = if action == CraftAction::FinalAppraisal {
@@ -200,7 +203,7 @@ fn _dfs(params: &CraftParameter, state: &CraftState, depth: i64, memo: &mut Hash
         let mut sub_results: Vec<DFSResult> = vec![];
         for proba_state in next_search_states {
             let next_depth =  depth - 1;
-            let sub_result = _dfs(params, &proba_state.state, next_depth, memo);
+            let sub_result = _dfs(params, factors, &proba_state.state, next_depth, memo);
             score += sub_result.best_score * proba_state.probability;
             upper_bound -= (1. - sub_result.best_score) * proba_state.probability;
             sub_results.push(sub_result);
