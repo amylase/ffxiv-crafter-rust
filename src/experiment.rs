@@ -25,7 +25,7 @@ fn run(params: &CraftParameter, initial_quality: i64, seed: u64, verbose: bool) 
         let next_action = dfs_result.best_action_path.into_iter().next().unwrap();
         let next_states = next_action.play(&params, &state);
 
-        let choice: f64 = rng.gen();
+        let choice: f64 = rng.r#gen();
         let mut accumulate: f64 = 0.;
         let mut next_state = None;
         for proba_state in next_states {

@@ -51,7 +51,7 @@ pub fn run_macro(params: &CraftParameter, actions: &Vec<CraftAction>, initial_qu
         }
         let next_states = next_action.play(&params, &state);
 
-        let choice: f64 = rng.gen();
+        let choice: f64 = rng.r#gen();
         let mut accumulate: f64 = 0.;
         let mut next_state = None;
         for proba_state in next_states {
@@ -85,7 +85,7 @@ fn available_actions(params: &CraftParameter) -> Vec<CraftAction> {
 
 fn tweak(params: &CraftParameter, actions: &Vec<CraftAction>, state: &CraftState, annealing_params: &AnnealingParams) -> Vec<CraftAction> {
     let mut rng = thread_rng();
-    let choice: f64 = rng.gen();
+    let choice: f64 = rng.r#gen();
     let mut new_actions = vec![];
     let effective_length = actions.len().min(state.turn as usize);
     if actions.len() < 43 && (choice < annealing_params.add_proba || actions.is_empty()) {
@@ -176,7 +176,7 @@ pub fn plan_with_annealing_params(orig_params: &CraftParameter, initial_quality:
         state = run_macro(params, &new_actions, initial_quality, true);
         let new_score = annealing_objective(params, &state, &new_actions);
         let new_actual_score = actual_objective(params, &state, &new_actions);
-        if new_score > score || rng.gen::<f64>() < ((new_score - score) / temperature).exp() {
+        if new_score > score || rng.r#gen::<f64>() < ((new_score - score) / temperature).exp() {
             score = new_score;
             actions = new_actions.clone();
         }
@@ -211,7 +211,7 @@ fn remove_unusable_actions(params: &CraftParameter, actions: &Vec<CraftAction>) 
         }
         let next_states = next_action.play(&params, &state);
 
-        let choice: f64 = rng.gen();
+        let choice: f64 = rng.r#gen();
         let mut accumulate: f64 = 0.;
         let mut next_state = None;
         for proba_state in next_states {
