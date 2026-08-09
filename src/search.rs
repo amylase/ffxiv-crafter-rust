@@ -137,9 +137,10 @@ pub fn dfs(params: &CraftParameter, state: &CraftState, depth: i64) -> DFSResult
     }
 }
 
-/// Maps a state to its score and the action achieving it. Note that the depth is
-/// deliberately not part of the key: reusing shallower evaluations is what keeps
-/// the search tractable.
+/// Maps a state to its score and the action achieving it. The depth is
+/// deliberately not part of the key: scores from shallower evaluations of the
+/// same state are reused as an approximation, which is what keeps the search
+/// tractable.
 type Memo = HashMap<CraftState, (f64, Option<CraftAction>)>;
 
 /// Distribution the search recurses into after playing `action`. Non terminal
